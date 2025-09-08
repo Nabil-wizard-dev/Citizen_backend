@@ -47,11 +47,8 @@ public class Signalement extends AuditTable {
     @Column(name = "service_id", nullable = false)
     private Long serviceId; // Référence au service spécifique
 
-    @OneToMany(mappedBy = "signalement", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<FichierJoin> fichiers = new ArrayList<>();
-
     @ElementCollection
-    @CollectionTable(name = "fichiers_paths", joinColumns = @JoinColumn(name = "signalement_id"))
+    @CollectionTable(name = "signalement_fichiers_paths", joinColumns = @JoinColumn(name = "signalement_id"))
     @Column(name = "fichier_path")
     private List<String> fichiersPaths = new ArrayList<>();
 
@@ -163,12 +160,12 @@ public class Signalement extends AuditTable {
         this.serviceId = serviceId;
     }
 
-    public List<FichierJoin> getFichiers() {
-        return fichiers;
+    public List<String> getFichiersPaths() {
+        return fichiersPaths;
     }
 
-    public void setFichiers(List<FichierJoin> fichiers) {
-        this.fichiers = fichiers;
+    public void setFichiersPaths(List<String> fichiersPaths) {
+        this.fichiersPaths = fichiersPaths;
     }
 
     public String getCommentaireService() {
@@ -220,13 +217,6 @@ public class Signalement extends AuditTable {
         this.ouvrier = ouvrier;
     }
 
-    public List<String> getFichiersPaths() {
-        return fichiersPaths;
-    }
-
-    public void setFichiersPaths(List<String> fichiersPaths) {
-        this.fichiersPaths = fichiersPaths;
-    }
 
 //    public Tache getTache() {
 //        return tache;

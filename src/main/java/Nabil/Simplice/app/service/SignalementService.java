@@ -13,11 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface SignalementService {
-    // Créer un nouveau signalement
-    ResponseEntity<ApiResponse<SignalementResponse>> creerSignalement(SignalementRequest request);
-
-    // nouvelle methode de creation
-    public ResponseEntity<ApiResponse<SignalementResponse>> creerSignalementComplet(SignalementRequest request , List<MultipartFile> fichiers);
+    // Créer un nouveau signalement (avec ou sans fichiers)
+    ResponseEntity<ApiResponse<SignalementResponse>> creerSignalement(SignalementRequest request, List<MultipartFile> fichiers);
 
     // Récupérer tous les signalements
     ResponseEntity<ApiResponse<List<SignalementResponse>>> getAll();
@@ -34,22 +31,22 @@ public interface SignalementService {
     ResponseEntity<ApiResponse<Void>> delete(UUID id);
 
     // Mettre à jour le statut d'un signalement
-    SignalementResponse updateStatut(Long id, StatutSignalement statut);
+    ResponseEntity<ApiResponse<SignalementResponse>> updateStatut(UUID id, StatutSignalement statut);
 
     // Ajouter un commentaire de service
-    SignalementResponse ajouterCommentaireService(Long id, String commentaire);
+    ResponseEntity<ApiResponse<SignalementResponse>> ajouterCommentaireService(UUID id, String commentaire);
 
     // Récupérer les signalements par type de service
-    List<SignalementResponse> getSignalementsByTypeService(TypeService typeService);
+    ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByTypeService(TypeService typeService);
 
     // Récupérer les signalements par statut
-    List<SignalementResponse> getSignalementsByStatut(StatutSignalement statut);
+    ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByStatut(StatutSignalement statut);
 
     // Récupérer les signalements par priorité
-    List<SignalementResponse> getSignalementsByPriorite(Integer priorite);
+    ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByPriorite(Integer priorite);
 
     // Récupérer les signalements par service
-    List<SignalementResponse> getSignalementsByServiceId(Long serviceId);
+    ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByServiceId(Long serviceId);
 
     // Finaliser un signalement (changer le statut vers TRAITE)
     ResponseEntity<ApiResponse<SignalementResponse>> finaliserSignalement(String trackingId);

@@ -6,7 +6,7 @@ import Nabil.Simplice.app.entity.Annonce;
 import Nabil.Simplice.app.mappers.AnnonceMappers;
 import Nabil.Simplice.app.repository.AnnonceRepository;
 import Nabil.Simplice.app.service.AnnonceService;
-import Nabil.Simplice.app.service.FichierJoinService;
+import Nabil.Simplice.app.service.FileStorageService;
 import Nabil.Simplice.app.utils.ApiResponse;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -18,19 +18,23 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.stream.Collectors;
 
 @Service
 public class AnnonceServiceImpl implements AnnonceService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AnnonceServiceImpl.class);
+    
     private AnnonceRepository repository;
     private AnnonceMappers mappers;
-    private FichierJoinService fichierJoinService;
+    private FileStorageService fileStorageService;
 
-    public AnnonceServiceImpl(AnnonceRepository repository, AnnonceMappers mappers, FichierJoinService fichierJoinService) {
+    public AnnonceServiceImpl(AnnonceRepository repository, AnnonceMappers mappers, FileStorageService fileStorageService) {
         this.repository = repository;
         this.mappers = mappers;
-        this.fichierJoinService = fichierJoinService;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -75,18 +79,8 @@ public class AnnonceServiceImpl implements AnnonceService {
     public ResponseEntity<ApiResponse<AnnonceResponse>> addAnnonce(AnnonceRequest a, List<MultipartFile> fichiers) {
         try {
 
-            List<String> fichiersPaths = new ArrayList<>();// pour stocker les chemins
-
-            //mettre en place les fichiers join
-            for (MultipartFile fichier : fichiers) {
-                ResponseEntity<ApiResponse<String>> jsonResult = fichierJoinService.uploadFichier(fichier);
-
-                if (jsonResult.getBody().getData() != null) {
-                    fichiersPaths.add(jsonResult.getBody().getData());
-                }else{
-                    fichiersPaths = null;
-                }
-            }
+            // Stocker les fichiers
+            List<String> fichiersPaths = fileStorageService.storeFiles(fichiers);
             System.out.println(fichiersPaths);
 
             // creer le signalement
@@ -95,7 +89,7 @@ public class AnnonceServiceImpl implements AnnonceService {
 
             return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", mappers.toResponse(saved)));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Erreur lors de la création de l'annonce", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la creation", null));
         }
     }
@@ -130,7 +124,7 @@ public class AnnonceServiceImpl implements AnnonceService {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Erreur lors de la mise à jour de l'annonce", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la mise a jr", null));
         }
     }

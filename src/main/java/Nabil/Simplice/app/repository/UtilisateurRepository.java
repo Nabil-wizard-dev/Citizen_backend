@@ -20,7 +20,7 @@ public interface UtilisateurRepository extends JpaRepository<Utilisateur, Long> 
 		List<Utilisateur> findByRole(UtilisateurRole role);
 		@Query("select u from Utilisateur u where u.role = ?1 order by u.nom")
 		List<Utilisateur> findByRoleOrderByNom(UtilisateurRole role);
-		@Query("select u from Utilisateur u where u.role = ?1order by u.email")
+		@Query("select u from Utilisateur u where u.role = ?1 order by u.email")
 		List<Utilisateur> findByRoleOrderByEmail(UtilisateurRole role);
 		
 		

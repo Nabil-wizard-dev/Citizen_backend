@@ -52,17 +52,19 @@ public class SignalementController {
 
     }
 
-    @PostMapping("add")
-    public ResponseEntity<ApiResponse<SignalementResponse>> createSignalement(
-        @RequestBody SignalementRequest request) {
-        return signalementService.creerSignalement(request);
-    }
 
-    @PostMapping(value = "addInOne",consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<SignalementResponse>> creationSignalementComplete(
+    // @PostMapping(value = "create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    // public ResponseEntity<ApiResponse<SignalementResponse>> createSignalementWithFiles(
+    //     @RequestPart("request") SignalementRequest request,
+    //     @RequestPart("files") List<MultipartFile> fichiers) {
+    //     return signalementService.creerSignalement(request, fichiers);
+    // }
+
+    @PostMapping(value = "create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<SignalementResponse>> createSignalementWithFilesAlias(
         @RequestPart("request") SignalementRequest request,
         @RequestPart("files") List<MultipartFile> fichiers) {
-        return signalementService.creerSignalementComplet(request,fichiers);
+        return signalementService.creerSignalement(request, fichiers);
     }
 
     @PutMapping("update/{id}")
@@ -78,39 +80,39 @@ public class SignalementController {
     }
 
     @GetMapping("/statut/{statut}")
-    public ResponseEntity<List<SignalementResponse>> getSignalementsByStatut(
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByStatut(
         @PathVariable StatutSignalement statut) {
-        return ResponseEntity.ok(signalementService.getSignalementsByStatut(statut));
+        return signalementService.getSignalementsByStatut(statut);
     }
 
     @GetMapping("/type/{typeService}")
-    public ResponseEntity<List<SignalementResponse>> getSignalementsByType(
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByType(
         @PathVariable TypeService typeService) {
-        return ResponseEntity.ok(signalementService.getSignalementsByTypeService(typeService));
+        return signalementService.getSignalementsByTypeService(typeService);
     }
 
     @GetMapping("/priorite/{priorite}")
-    public ResponseEntity<List<SignalementResponse>> getSignalementsByPriorite(@PathVariable Integer priorite) {
-        return ResponseEntity.ok(signalementService.getSignalementsByPriorite(priorite));
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByPriorite(@PathVariable Integer priorite) {
+        return signalementService.getSignalementsByPriorite(priorite);
     }
 
     @GetMapping("/service/{serviceId}")
-    public ResponseEntity<List<SignalementResponse>> getSignalementsByService(@PathVariable Long serviceId) {
-        return ResponseEntity.ok(signalementService.getSignalementsByServiceId(serviceId));
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByService(@PathVariable Long serviceId) {
+        return signalementService.getSignalementsByServiceId(serviceId);
     }
 
     @PatchMapping("/{id}/statut")
-    public ResponseEntity<SignalementResponse> updateStatutSignalement(
-            @PathVariable Long id,
+    public ResponseEntity<ApiResponse<SignalementResponse>> updateStatutSignalement(
+            @PathVariable UUID id,
             @RequestParam StatutSignalement statut) {
-        return ResponseEntity.ok(signalementService.updateStatut(id, statut));
+        return signalementService.updateStatut(id, statut);
     }
 
     @PatchMapping("/{id}/commentaire")
-    public ResponseEntity<SignalementResponse> ajouterCommentaire(
-            @PathVariable Long id,
+    public ResponseEntity<ApiResponse<SignalementResponse>> ajouterCommentaire(
+            @PathVariable UUID id,
             @RequestParam String commentaire) {
-        return ResponseEntity.ok(signalementService.ajouterCommentaireService(id, commentaire));
+        return signalementService.ajouterCommentaireService(id, commentaire);
     }
 
     @PostMapping("/finaliser/{trackingId}")

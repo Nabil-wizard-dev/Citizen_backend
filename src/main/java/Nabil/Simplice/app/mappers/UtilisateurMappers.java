@@ -42,7 +42,6 @@ public class UtilisateurMappers {
 		userRes.setCni(user.getCni());
 		userRes.setDateNaissance(user.getDateNaissance());
 		userRes.setEmail(user.getEmail());
-		userRes.setMotDePasse(user.getMotDePasse());
 		userRes.setNom(user.getNom());
 		userRes.setPrenom(user.getPrenom());
 		userRes.setNumero(user.getNumero());

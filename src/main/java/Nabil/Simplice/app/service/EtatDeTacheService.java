@@ -11,8 +11,8 @@ import java.util.UUID;
 public interface EtatDeTacheService {
     ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTache(EtatDeTacheRequest request);
 
-    // nouvelle methode de creation
-//    ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTacheComplet(EtatDeTacheRequest request, List<MultipartFile> fichiers);
+    ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTacheAvecFichiers(EtatDeTacheRequest request, List<MultipartFile> fichiers);
+
     ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTacheComplet(EtatDeTacheRequest request, MultipartFile fichier);
 
     ResponseEntity<ApiResponse<List<EtatDeTacheResponse>>> getAll();

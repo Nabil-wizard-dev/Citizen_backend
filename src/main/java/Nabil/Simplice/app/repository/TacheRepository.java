@@ -12,10 +12,11 @@ import java.util.UUID;
 @Repository
 public interface TacheRepository extends JpaRepository<Tache, Long> {
 
-    Optional<Tache> findByTrakingId(UUID trackingId);
+    Optional<Tache> findByTrakingId(UUID trakingId);
 
     @Query("select t from Tache t where t.signalement.trackingId = ?1")
     Optional<Tache> findBySignalementId(UUID signalementId);
 
-    boolean existsByTrakingId(UUID trackingId);
+    boolean existsByTrakingId(UUID trakingId);
+
 }

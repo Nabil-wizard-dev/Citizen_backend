@@ -2,7 +2,7 @@ package Nabil.Simplice.app.serviceImpl;
 
 import Nabil.Simplice.app.entity.*;
 import Nabil.Simplice.app.repository.*;
-import Nabil.Simplice.app.service.FichierJoinService;
+import Nabil.Simplice.app.service.FileStorageService;
 import Nabil.Simplice.app.utils.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,61 +33,44 @@ public class SignalementImpl implements SignalementService {
     
     private final SignalementRepository repository;
     private final SignalementMappers mappers;
-    private final FichierJoinRepository fichierJoinRepository;
     private final UtilisateurRepository utilisateurRepository;
     private final OuvrierRepository ouvrierRepository;
     private final AutoriteRepository autoriteRepository;
-    private final FichierJoinService fichierJoinService;
+    private final FileStorageService fileStorageService;
+    private final DevisRepository devisRepository;
+    private final RapportRepository rapportRepository;
 
-    public SignalementImpl(SignalementRepository repository, SignalementMappers mappers, FichierJoinRepository fichierJoinRepository, UtilisateurRepository utilisateurRepository, OuvrierRepository ouvrierRepository, AutoriteRepository autoriteRepository, FichierJoinService fichierJoinService) {
+    public SignalementImpl(SignalementRepository repository, SignalementMappers mappers, UtilisateurRepository utilisateurRepository, OuvrierRepository ouvrierRepository, AutoriteRepository autoriteRepository, FileStorageService fileStorageService, DevisRepository devisRepository, RapportRepository rapportRepository) {
         this.repository = repository;
         this.mappers = mappers;
-        this.fichierJoinRepository = fichierJoinRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.ouvrierRepository = ouvrierRepository;
         this.autoriteRepository = autoriteRepository;
-        this.fichierJoinService = fichierJoinService;
+        this.fileStorageService = fileStorageService;
+        this.devisRepository = devisRepository;
+        this.rapportRepository = rapportRepository;
     }
 
+
     @Override
-    public ResponseEntity<ApiResponse<SignalementResponse>> creerSignalement(SignalementRequest request) {
+    public ResponseEntity<ApiResponse<SignalementResponse>> creerSignalement(SignalementRequest request, List<MultipartFile> fichiers) {
         try {
-            Signalement saved = repository.save(mappers.toEntity(request));
-            
-            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", mappers.toResponse(saved)));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la recuparation", null));
-        }
-    }
+            // Créer le signalement d'abord
+            Signalement signalement = mappers.toEntity(request);
+            Signalement saved = repository.save(signalement);
 
-    // nouvelle methode de creation
-    @Override
-    public ResponseEntity<ApiResponse<SignalementResponse>> creerSignalementComplet(SignalementRequest request , List<MultipartFile> fichiers) {
-        try {
-
-            List<String> fichiersPaths = new ArrayList<>();// pour stocker les chemins
-
-            //mettre en place les fichiers join
-            for (MultipartFile fichier : fichiers) {
-                ResponseEntity<ApiResponse<String>> jsonResult = fichierJoinService.uploadFichier(fichier);
-
-                if (jsonResult.getBody().getData() != null) {
-                    fichiersPaths.add(jsonResult.getBody().getData());
-                }else{
-                    fichiersPaths = null;
-                }
+            // Gérer les fichiers s'il y en a
+            if (fichiers != null && !fichiers.isEmpty()) {
+                List<String> filePaths = fileStorageService.storeFiles(fichiers);
+                saved.setFichiersPaths(filePaths);
+                saved = repository.save(saved);
             }
-            System.out.println(fichiersPaths);
-
-            // creer le signalement
-            request.setFichiersPaths(fichiersPaths); //mettre a jr le champ
-            Signalement saved = repository.save(mappers.toEntity(request));
-
-            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", mappers.toResponse(saved)));
+            
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Signalement créé avec succès", mappers.toResponse(saved)));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la recuparation", null));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de la création: " + e.getMessage(), null));
         }
     }
 
@@ -132,21 +115,6 @@ public class SignalementImpl implements SignalementService {
 
 
 
-//    @Override
-//    public ResponseEntity<ApiResponse<SignalementResponse>> updateSignalement(UUID id, SignalementRequest request) {
-//        try {
-//            Signalement signalement = repository.findByTrackingId(id)
-//                    .orElseThrow(() -> new EntityNotFoundException("Signalement non trouvé avec l'ID : " + id));
-//            mappers.updateEntityFromRequest(signalement, request);
-//            Signalement updated = repository.save(signalement);
-//            SignalementResponse response = mappers.toResponse(updated);
-//            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", response));
-//        } catch (Exception e) {
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la recuparation", null));
-//        }
-//
-//
-//    }
 
 
     public ResponseEntity<ApiResponse<SignalementResponse>> updateSignalement(UUID trackingId, SignalementRequest req) {
@@ -178,13 +146,7 @@ public class SignalementImpl implements SignalementService {
                     existingSignalement.setServiceId(req.getServiceId());
                 }
 
-                if (req.getFichiers() != null && !req.getFichiers().isEmpty()) {
-                    List<FichierJoin> fichiers = req.getFichiers().stream()
-                            .map(id -> fichierJoinRepository.findByTrackingId(id)
-                                    .orElseThrow(() -> new RuntimeException("Aucun fichier trouvé pour l’ID : " + id)))
-                            .collect(Collectors.toList());
-                    existingSignalement.setFichiers(fichiers);
-                }
+                // Note: La gestion des fichiers se fait maintenant séparément via MultipartFile dans les endpoints
 
                 if (req.getCommentaireService() != null) {
                     existingSignalement.setCommentaireService(req.getCommentaireService());
@@ -259,60 +221,99 @@ public class SignalementImpl implements SignalementService {
     }
 
     @Override
-    public SignalementResponse updateStatut(Long id, StatutSignalement statut) {
-        Signalement signalement = repository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Signalement non trouvé avec l'ID : " + id));
-        
-        signalement.setStatut(statut);
-
-        Signalement updated = repository.save(signalement);
-        return mappers.toResponse(updated);
+    public ResponseEntity<ApiResponse<SignalementResponse>> updateStatut(UUID id, StatutSignalement statut) {
+        try {
+            Signalement signalement = repository.findByTrackingId(id)
+                .orElseThrow(() -> new EntityNotFoundException("Signalement non trouvé avec l'ID : " + id));
+            
+            signalement.setStatut(statut);
+            Signalement updated = repository.save(signalement);
+            
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Statut mis à jour avec succès", mappers.toResponse(updated)));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de la mise à jour du statut: " + e.getMessage(), null));
+        }
     }
 
     @Override
-    public SignalementResponse ajouterCommentaireService(Long id, String commentaire) {
-        Signalement signalement = repository.findById(id)
-            .orElseThrow(() -> new EntityNotFoundException("Signalement non trouvé avec l'ID : " + id));
-        
-        signalement.setCommentaireService(commentaire);
-        Signalement updated = repository.save(signalement);
-        return mappers.toResponse(updated);
+    public ResponseEntity<ApiResponse<SignalementResponse>> ajouterCommentaireService(UUID id, String commentaire) {
+        try {
+            Signalement signalement = repository.findByTrackingId(id)
+                .orElseThrow(() -> new EntityNotFoundException("Signalement non trouvé avec l'ID : " + id));
+            
+            signalement.setCommentaireService(commentaire);
+            Signalement updated = repository.save(signalement);
+            
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Commentaire ajouté avec succès", mappers.toResponse(updated)));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de l'ajout du commentaire: " + e.getMessage(), null));
+        }
     }
 
     @Override
-    public List<SignalementResponse> getSignalementsByTypeService(TypeService typeService) {
-        return repository.findAll()
-            .stream()
-            .filter(s -> s.getTypeService() == typeService)
-            .map(mappers::toResponse)
-            .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByTypeService(TypeService typeService) {
+        try {
+            List<SignalementResponse> signalements = repository.findAll()
+                .stream()
+                .filter(s -> s.getTypeService() == typeService)
+                .map(mappers::toResponse)
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Signalements récupérés avec succès", signalements));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de la récupération: " + e.getMessage(), null));
+        }
     }
 
     @Override
-    public List<SignalementResponse> getSignalementsByStatut(StatutSignalement statut) {
-        return repository.findAll()
-            .stream()
-            .filter(s -> s.getStatut() == statut)
-            .map(mappers::toResponse)
-            .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByStatut(StatutSignalement statut) {
+        try {
+            List<SignalementResponse> signalements = repository.findAll()
+                .stream()
+                .filter(s -> s.getStatut() == statut)
+                .map(mappers::toResponse)
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Signalements récupérés avec succès", signalements));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de la récupération: " + e.getMessage(), null));
+        }
     }
 
     @Override
-    public List<SignalementResponse> getSignalementsByPriorite(Integer priorite) {
-        return repository.findAll()
-            .stream()
-            .filter(s -> s.getPriorite() != null && s.getPriorite().equals(priorite))
-            .map(mappers::toResponse)
-            .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByPriorite(Integer priorite) {
+        try {
+            List<SignalementResponse> signalements = repository.findAll()
+                .stream()
+                .filter(s -> s.getPriorite() != null && s.getPriorite().equals(priorite))
+                .map(mappers::toResponse)
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Signalements récupérés avec succès", signalements));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de la récupération: " + e.getMessage(), null));
+        }
     }
 
     @Override
-    public List<SignalementResponse> getSignalementsByServiceId(Long serviceId) {
-        return repository.findAll()
-            .stream()
-            .filter(s -> s.getServiceId().equals(serviceId))
-            .map(mappers::toResponse)
-            .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByServiceId(Long serviceId) {
+        try {
+            List<SignalementResponse> signalements = repository.findAll()
+                .stream()
+                .filter(s -> s.getServiceId().equals(serviceId))
+                .map(mappers::toResponse)
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Signalements récupérés avec succès", signalements));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de la récupération: " + e.getMessage(), null));
+        }
     }
 
     @Override
@@ -373,50 +374,6 @@ public class SignalementImpl implements SignalementService {
         }
     }
 
-//    @Override
-//    public SignalementResponse creerSignalementAvecImage(SignalementRequest request, MultipartFile image) {
-//        Signalement entity = mappers.toEntity(request);
-//        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-//        Utilisateur createur = utilisateurRepository.findByEmail(email)
-//            .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
-//        entity.setCreateur(createur);
-//        System.out.println("Avant save (image) : " + entity);
-//        entity = repository.save(entity);
-//        System.out.println("Après save (image) : " + entity);
-//        // Sauvegarde de l'image et association au signalement
-//        if (image != null && !image.isEmpty()) {
-//            FichierJoin fichier = new FichierJoin();
-//            fichier.setNom(image.getOriginalFilename());
-//            fichier.setTaille(image.getSize());
-//            fichier.setSignalement(entity);
-//            fichier.setDateCreation(java.time.LocalDateTime.now());
-//            fichier.setTrackingId(java.util.UUID.randomUUID());
-//            fichier.setCode("IMG-" + System.currentTimeMillis());
-//            // Sauvegarde physique
-//            try {
-//                java.nio.file.Path directory = java.nio.file.Paths.get("Media", "images");
-//                java.nio.file.Files.createDirectories(directory);
-//                String newFilename = System.currentTimeMillis() + "_" + image.getOriginalFilename();
-//                java.nio.file.Path targetPath = directory.resolve(newFilename);
-//                image.transferTo(targetPath);
-//                fichier.setUrl(targetPath.toString());
-//                // Extension
-//                String ext = image.getOriginalFilename().toLowerCase();
-//                if (ext.endsWith(".jpg")) fichier.setExtension(Nabil.Simplice.app.enums.ExtensionFichier.JPG);
-//                else if (ext.endsWith(".jpeg")) fichier.setExtension(Nabil.Simplice.app.enums.ExtensionFichier.JPEG);
-//                else if (ext.endsWith(".png")) fichier.setExtension(Nabil.Simplice.app.enums.ExtensionFichier.PNG);
-//                else if (ext.endsWith(".gif")) fichier.setExtension(Nabil.Simplice.app.enums.ExtensionFichier.GIF);
-//                else throw new IllegalArgumentException("Extension de fichier non supportée");
-//            } catch (Exception e) {
-//                throw new RuntimeException("Erreur lors de l'upload de l'image : " + e.getMessage(), e);
-//            }
-//            fichierJoinRepository.save(fichier);
-//            if (entity.getFichiers() == null) entity.setFichiers(new ArrayList<>());
-//            entity.getFichiers().add(fichier);
-//            repository.save(entity);
-//        }
-//        return mappers.toResponse(entity);
-//    }
 
     @Override
     public ResponseEntity<ApiResponse<String>> uploadDevis(MultipartFile pdf, String titre, String signalementId, String ouvrierId, String dateCreation) {
@@ -428,51 +385,34 @@ public class SignalementImpl implements SignalementService {
             System.out.println("Date création: " + dateCreation);
             System.out.println("Taille PDF: " + pdf.getSize() + " bytes");
 
-            // Utiliser le service FichierJoin pour uploader le PDF
-            ResponseEntity<ApiResponse<String>> uploadResult = fichierJoinService.uploadFichier(pdf);
+            // Stocker le fichier PDF via le nouveau service
+            String filePath = fileStorageService.storeFile(pdf);
+            System.out.println("PDF uploadé avec succès: " + filePath);
             
-            if (uploadResult.getBody() != null && uploadResult.getBody().getData() != null) {
-                String filePath = uploadResult.getBody().getData();
-                System.out.println("PDF uploadé avec succès: " + filePath);
-                
-                // Chercher le fichier dans la base pour récupérer son trackingId
-                // Le service retourne le chemin avec / mais sauvegarde avec \
-                String cheminRecherche = filePath.replace("/", "\\");
-                System.out.println("Chemin retourné par le service: " + filePath);
-                System.out.println("Chemin pour la recherche: " + cheminRecherche);
-                java.util.Optional<FichierJoin> fichierOpt = fichierJoinRepository.findByChemin(cheminRecherche);
-                if (fichierOpt.isPresent()) {
-                    FichierJoin fichier = fichierOpt.get();
-                    String trackingId = fichier.getTrackingId().toString();
-                    System.out.println("TrackingId du fichier: " + trackingId);
-                    
-                    // Chercher le signalement et associer le fichier
-                    try {
-                        java.util.Optional<Signalement> signalementOpt = repository.findByTrackingId(java.util.UUID.fromString(signalementId));
-                        if (signalementOpt.isPresent()) {
-                            Signalement signalement = signalementOpt.get();
-                            fichier.setSignalement(signalement);
-                            fichierJoinRepository.save(fichier);
-                            System.out.println("Fichier associé au signalement: " + signalement.getId());
-                        } else {
-                            System.out.println("Signalement non trouvé: " + signalementId);
-                        }
-                    } catch (Exception e) {
-                        System.out.println("Erreur lors de l'association au signalement: " + e.getMessage());
-                    }
-                    
-                    // Retourner le trackingId du fichier
-                    return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Devis uploadé avec succès", trackingId));
-                } else {
-                    System.out.println("Fichier non trouvé dans la base après upload");
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(new ApiResponse<>(LocalDateTime.now(), false, "Fichier non trouvé dans la base", null));
-                }
-            } else {
-                System.out.println("Erreur lors de l'upload du PDF");
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de l'upload du PDF", null));
+            // Créer l'entité Devis
+            Devis devis = new Devis(titre, filePath, dateCreation);
+            
+            // Chercher le signalement
+            Optional<Signalement> signalementOpt = repository.findByTrackingId(UUID.fromString(signalementId));
+            if (signalementOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponse<>(LocalDateTime.now(), false, "Signalement non trouvé", null));
             }
+            
+            devis.setSignalement(signalementOpt.get());
+            
+            // Chercher l'ouvrier si fourni
+            if (ouvrierId != null && !ouvrierId.isEmpty()) {
+                Optional<Ouvrier> ouvrierOpt = ouvrierRepository.findByTrackingId(UUID.fromString(ouvrierId));
+                ouvrierOpt.ifPresent(devis::setOuvrier);
+            }
+            
+            // Sauvegarder le devis
+            Devis savedDevis = devisRepository.save(devis);
+            
+            System.out.println("Devis créé avec succès. TrackingId: " + savedDevis.getTrackingId());
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, 
+                "Devis uploadé avec succès", savedDevis.getTrackingId().toString()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -497,31 +437,29 @@ public class SignalementImpl implements SignalementService {
             
             Signalement signalement = signalementOpt.get();
             
-            // Récupérer tous les fichiers PDF associés à ce signalement
-            List<FichierJoin> fichiers = fichierJoinRepository.findBySignalementId(signalement.getId());
+            // Récupérer tous les devis associés à ce signalement
+            List<Devis> devisList = devisRepository.findBySignalementId(signalement.getId());
             
-            // Filtrer seulement les PDFs et créer des objets DevisResponse
-            List<DevisResponse> devisList = fichiers.stream()
-                .filter(fichier -> fichier.getExtension() != null && fichier.getExtension().toLowerCase().contains(".pdf"))
-                .map(fichier -> {
-                    // Utiliser l'ouvrier du signalement s'il existe, sinon une valeur par défaut
-                    String ouvrierId = signalement.getOuvrier() != null ? 
-                        signalement.getOuvrier().getTrackingId().toString() : "Non assigné";
+            // Convertir en DevisResponse
+            List<DevisResponse> devisResponseList = devisList.stream()
+                .map(devis -> {
+                    String ouvrierId = devis.getOuvrier() != null ? 
+                        devis.getOuvrier().getTrackingId().toString() : "Non assigné";
                     
                     return new DevisResponse(
-                        fichier.getTrackingId().toString(),
-                        "Devis - " + signalement.getTitre(),
+                        devis.getTrackingId().toString(),
+                        devis.getTitre(),
                         signalement.getTrackingId().toString(),
                         ouvrierId,
-                        fichier.getCreateDate().toString(),
-                        fichier.getChemin()
+                        devis.getDateCreationDevis(),
+                        devis.getFilePath()
                     );
                 })
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
             
-            System.out.println("Nombre de PDFs trouvés: " + devisList.size());
+            System.out.println("Nombre de devis trouvés: " + devisResponseList.size());
             
-            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", devisList));
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", devisResponseList));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -535,27 +473,21 @@ public class SignalementImpl implements SignalementService {
             System.out.println("=== TÉLÉCHARGEMENT DEVIS PDF ===");
             System.out.println("Devis ID: " + devisId);
             
-            // Chercher le fichier dans la base de données via FichierJoin
-            java.util.Optional<FichierJoin> fichierOpt = fichierJoinRepository.findByTrackingId(java.util.UUID.fromString(devisId));
+            // Chercher le devis dans la base de données
+            Optional<Devis> devisOpt = devisRepository.findByTrackingId(UUID.fromString(devisId));
             
-            if (fichierOpt.isEmpty()) {
-                System.out.println("Fichier non trouvé dans la base de données");
+            if (devisOpt.isEmpty()) {
+                System.out.println("Devis non trouvé dans la base de données");
                 return ResponseEntity.notFound().build();
             }
             
-            FichierJoin fichier = fichierOpt.get();
-            String filePath = fichier.getChemin();
+            Devis devis = devisOpt.get();
+            String filePath = devis.getFilePath();
             
             System.out.println("Chemin du fichier: " + filePath);
             
-            java.io.File file = new java.io.File(filePath);
-            if (!file.exists()) {
-                System.out.println("Fichier physique non trouvé: " + filePath);
-                return ResponseEntity.notFound().build();
-            }
-
-            // Lire le fichier
-            byte[] pdfBytes = java.nio.file.Files.readAllBytes(file.toPath());
+            // Lire le fichier via le service de stockage
+            byte[] pdfBytes = fileStorageService.getFile(filePath);
             
             System.out.println("Fichier lu avec succès, taille: " + pdfBytes.length + " bytes");
             
@@ -583,19 +515,19 @@ public class SignalementImpl implements SignalementService {
                     .body(new ApiResponse<>(LocalDateTime.now(), false, "Signalement non trouvé", null));
             }
             
-            // Chercher le fichier
-            java.util.Optional<FichierJoin> fichierOpt = fichierJoinRepository.findByTrackingId(java.util.UUID.fromString(fichierId));
-            if (fichierOpt.isEmpty()) {
+            // Chercher le devis
+            Optional<Devis> devisOpt = devisRepository.findByTrackingId(UUID.fromString(fichierId));
+            if (devisOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponse<>(LocalDateTime.now(), false, "Fichier non trouvé", null));
+                    .body(new ApiResponse<>(LocalDateTime.now(), false, "Devis non trouvé", null));
             }
             
             Signalement signalement = signalementOpt.get();
-            FichierJoin fichier = fichierOpt.get();
+            Devis devis = devisOpt.get();
             
-            // Associer le fichier au signalement
-            fichier.setSignalement(signalement);
-            fichierJoinRepository.save(fichier);
+            // Associer le devis au signalement (si pas déjà fait)
+            devis.setSignalement(signalement);
+            devisRepository.save(devis);
             
             System.out.println("Devis associé avec succès au signalement");
             
@@ -641,48 +573,28 @@ public class SignalementImpl implements SignalementService {
             
             Signalement signalement = signalementOpt.get();
             
-            // Sauvegarder le PDF via FichierJoinService
-            ResponseEntity<ApiResponse<String>> uploadResult = fichierJoinService.uploadFichier(pdf);
+            // Stocker le PDF via le nouveau service de stockage
+            String filePath = fileStorageService.storeFile(pdf);
+            System.out.println("PDF uploadé avec succès: " + filePath);
             
-            if (uploadResult.getBody() != null && uploadResult.getBody().getData() != null) {
-                String filePath = uploadResult.getBody().getData();
-                System.out.println("PDF uploadé avec succès: " + filePath);
-                
-                // Convertir le chemin pour la recherche (comme dans uploadDevis)
-                String cheminRecherche = filePath.replace("/", "\\");
-                System.out.println("Chemin pour la recherche: " + cheminRecherche);
-                
-                // Récupérer le FichierJoin créé
-                java.util.Optional<FichierJoin> fichierOpt = fichierJoinRepository.findByChemin(cheminRecherche);
-                
-                if (fichierOpt.isPresent()) {
-                    FichierJoin fichier = fichierOpt.get();
-                    String trackingId = fichier.getTrackingId().toString();
-                    
-                    // Associer le fichier au signalement
-                    fichier.setSignalement(signalement);
-                    fichierJoinRepository.save(fichier);
-                    
-                    // Mettre à jour le commentaire du signalement si fourni
-                    if (commentaire != null && !commentaire.trim().isEmpty()) {
-                        signalement.setCommentaireService(commentaire);
-                        repository.save(signalement);
-                    }
-                    
-                    System.out.println("Rapport d'avancement associé avec succès au signalement");
-                    System.out.println("TrackingId du fichier: " + trackingId);
-                    
-                    return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Rapport d'avancement uploadé avec succès", trackingId));
-                } else {
-                    System.out.println("FichierJoin non trouvé après upload");
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de l'association du fichier", null));
-                }
-            } else {
-                System.out.println("Échec de l'upload du fichier");
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de l'upload du fichier", null));
+            // Créer l'entité Rapport
+            Rapport rapport = new Rapport(commentaire, filePath);
+            rapport.setSignalement(signalement);
+            
+            // Sauvegarder le rapport
+            Rapport savedRapport = rapportRepository.save(rapport);
+            
+            // Mettre à jour le commentaire du signalement si fourni
+            if (commentaire != null && !commentaire.trim().isEmpty()) {
+                signalement.setCommentaireService(commentaire);
+                repository.save(signalement);
             }
+            
+            System.out.println("Rapport d'avancement créé avec succès");
+            System.out.println("TrackingId du rapport: " + savedRapport.getTrackingId());
+            
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, 
+                "Rapport d'avancement uploadé avec succès", savedRapport.getTrackingId().toString()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -707,30 +619,23 @@ public class SignalementImpl implements SignalementService {
             
             Signalement signalement = signalementOpt.get();
             
-            // Récupérer tous les fichiers PDF associés à ce signalement
-            List<FichierJoin> fichiers = fichierJoinRepository.findBySignalementId(signalement.getId());
+            // Récupérer tous les rapports associés à ce signalement
+            List<Rapport> rapports = rapportRepository.findBySignalementId(signalement.getId());
             
-            // Filtrer seulement les PDFs de rapports (pas les devis)
-            List<DevisResponse> rapportsList = fichiers.stream()
-                .filter(fichier -> fichier.getExtension() != null && fichier.getExtension().toLowerCase().contains(".pdf"))
-                .filter(fichier -> {
-                    // Exclure les devis en utilisant le code ou le chemin
-                    String code = fichier.getCode() != null ? fichier.getCode().toLowerCase() : "";
-                    String chemin = fichier.getChemin() != null ? fichier.getChemin().toLowerCase() : "";
-                    return !code.contains("devis") && !chemin.contains("devis");
-                })
-                .map(fichier -> {
+            // Convertir en DevisResponse (réutilisation de la structure pour les rapports)
+            List<DevisResponse> rapportsList = rapports.stream()
+                .map(rapport -> {
                     // Utiliser l'ouvrier du signalement s'il existe, sinon une valeur par défaut
                     String ouvrierId = signalement.getOuvrier() != null ? 
                         signalement.getOuvrier().getTrackingId().toString() : "Non assigné";
                     
                     return new DevisResponse(
-                        fichier.getTrackingId().toString(),
+                        rapport.getTrackingId().toString(),
                         "Rapport d'avancement - " + signalement.getTitre(),
                         signalement.getTrackingId().toString(),
                         ouvrierId,
-                        fichier.getCreateDate().toString(),
-                        fichier.getChemin()
+                        rapport.getCreateDate().toString(),
+                        rapport.getFilePath()
                     );
                 })
                 .collect(java.util.stream.Collectors.toList());

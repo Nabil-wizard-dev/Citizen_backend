@@ -9,37 +9,22 @@ import org.springframework.stereotype.Component;
 
 import Nabil.Simplice.app.dto.request.SignalementRequest;
 import Nabil.Simplice.app.dto.response.SignalementResponse;
-import Nabil.Simplice.app.entity.FichierJoin;
 import Nabil.Simplice.app.entity.Signalement;
 import Nabil.Simplice.app.enums.StatutSignalement;
 import Nabil.Simplice.app.repository.AutoriteRepository;
-import Nabil.Simplice.app.repository.FichierJoinRepository;
-import Nabil.Simplice.app.repository.GeolocalisationRepository;
 import Nabil.Simplice.app.repository.OuvrierRepository;
 import Nabil.Simplice.app.repository.UtilisateurRepository;
 
 @Component
 public class SignalementMappers {
-    private final GeolocalisationRepository geolocalisationRepository;
-    private final FichierJoinRepository fichierJoinRepository;
-    private final GeolocalisationMappers geolocalisationMappers;
-    private final FichierJoinMappers fichierJoinMappers;
     private final UtilisateurRepository utilisateurRepository;
     private final OuvrierRepository ouvrierRepository;
     private final AutoriteRepository autoriteRepository;
 
     public SignalementMappers(
-            GeolocalisationRepository geolocalisationRepository,
-            FichierJoinRepository fichierJoinRepository,
-            GeolocalisationMappers geolocalisationMappers,
-            FichierJoinMappers fichierJoinMappers,
             UtilisateurRepository utilisateurRepository,
             OuvrierRepository ouvrierRepository,
             AutoriteRepository autoriteRepository) {
-        this.geolocalisationRepository = geolocalisationRepository;
-        this.fichierJoinRepository = fichierJoinRepository;
-        this.geolocalisationMappers = geolocalisationMappers;
-        this.fichierJoinMappers = fichierJoinMappers;
         this.utilisateurRepository = utilisateurRepository;
         this.ouvrierRepository = ouvrierRepository;
         this.autoriteRepository = autoriteRepository;
@@ -59,11 +44,6 @@ public class SignalementMappers {
         signalement.setLatitude(req.getLatitude());
         signalement.setLongitude(req.getLongitude());
 
-        if (req.getFichiersPaths() != null) {
-            signalement.setFichiersPaths(req.getFichiersPaths());
-        }else {
-            signalement.setFichiersPaths(null);
-        }
         if (req.getTraiteurUuid() != null) {
             signalement.setUtilisateurTraiteur(
                 autoriteRepository.findByTrackingId(req.getTraiteurUuid()).orElse(null)
@@ -79,16 +59,7 @@ public class SignalementMappers {
             signalement.setOuvrier(null);
         }
 
-        List<UUID> ids = req.getFichiers();
-            if (ids != null && !ids.isEmpty()) {
-                List<FichierJoin> fichiers = ids.stream()
-                    .map(id -> fichierJoinRepository.findByTrackingId(id)
-                        .orElseThrow(() -> new RuntimeException("Aucun fichier trouvé pour l'ID : " + id)))
-                    .collect(Collectors.toList());
-                signalement.setFichiers(fichiers);
-            } else {
-                signalement.setFichiers(Collections.emptyList()); 
-            }
+        // Les fichiers seront gérés séparément dans le service
 
         return signalement;
     }
@@ -107,11 +78,6 @@ public class SignalementMappers {
         response.setLatitude(signalement.getLatitude());
         response.setLongitude(signalement.getLongitude());
 
-        if (signalement.getFichiersPaths() != null) {
-            response.setFichiersPaths(signalement.getFichiersPaths());
-        }else {
-            response.setFichiersPaths(null);
-        }
 
         if (signalement.getOuvrier() != null) {
             response.setOuvrierUuid(signalement.getOuvrier().getTrackingId());
@@ -122,11 +88,7 @@ public class SignalementMappers {
         }else {
             signalement.setUtilisateurTraiteur(null);}
 
-        List<FichierJoin> obj = signalement.getFichiers();
-        List<UUID> fichiersUUID = obj.stream()
-                .map(FichierJoin::getTrackingId)
-                .collect(Collectors.toList());
-        response.setFichiers(fichiersUUID);
+        response.setFichiersPaths(signalement.getFichiersPaths());
 
         return response;
     }

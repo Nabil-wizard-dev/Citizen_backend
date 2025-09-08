@@ -26,9 +26,7 @@ public class SignalementResponse {
     private Long serviceId;
     // Utilisateur créateur
     private UUID UtilisateurCreateur;
-    // Liste des fichiers
-    private List<UUID> fichiers;
-
+    // Liste des chemins de fichiers
     private List<String> fichiersPaths;
 
     // Commentaire du service
@@ -138,12 +136,12 @@ public class SignalementResponse {
         UtilisateurCreateur = utilisateurCreateur;
     }
 
-    public List<UUID> getFichiers() {
-        return fichiers;
+    public List<String> getFichiersPaths() {
+        return fichiersPaths;
     }
 
-    public void setFichiers(List<UUID> fichiers) {
-        this.fichiers = fichiers;
+    public void setFichiersPaths(List<String> fichiersPaths) {
+        this.fichiersPaths = fichiersPaths;
     }
 
     public UUID getOuvrierUuid() {
@@ -162,11 +160,4 @@ public class SignalementResponse {
         this.traiteurUuid = traiteurUuid;
     }
 
-    public List<String> getFichiersPaths() {
-        return fichiersPaths;
-    }
-
-    public void setFichiersPaths(List<String> fichiersPaths) {
-        this.fichiersPaths = fichiersPaths;
-    }
 }

@@ -10,7 +10,7 @@ public class EtatDeTacheResponse {
 
     private List<UUID> fichiers ;
 
-    private String fichiersPaths;
+    private List<String> fichiersPaths;
 
     private UUID tache;
 
@@ -46,11 +46,11 @@ public class EtatDeTacheResponse {
         this.tache = tache;
     }
 
-    public String getFichiersPaths() {
+    public List<String> getFichiersPaths() {
         return fichiersPaths;
     }
 
-    public void setFichiersPaths(String fichiersPaths) {
+    public void setFichiersPaths(List<String> fichiersPaths) {
         this.fichiersPaths = fichiersPaths;
     }
 }

@@ -1,10 +1,5 @@
 package Nabil.Simplice.app.dto.request;
 
-import Nabil.Simplice.app.entity.FichierJoin;
-import Nabil.Simplice.app.entity.Tache;
-import jakarta.persistence.*;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,9 +7,10 @@ public class EtatDeTacheRequest {
 
     private String description;
 
-    private List<UUID> fichiers ;
+    // Note: Ancienne gestion des fichiers par UUID supprimée
+    // private List<UUID> fichiers ;
 
-    private String fichiersPaths;
+    private List<String> fichiersPaths;
 
     private UUID tache;
 
@@ -26,13 +22,7 @@ public class EtatDeTacheRequest {
         this.description = description;
     }
 
-    public List<UUID> getFichiers() {
-        return fichiers;
-    }
-
-    public void setFichiers(List<UUID> fichiers) {
-        this.fichiers = fichiers;
-    }
+    // Méthodes getFichiers et setFichiers supprimées
 
     public UUID getTache() {
         return tache;
@@ -42,11 +32,11 @@ public class EtatDeTacheRequest {
         this.tache = tache;
     }
 
-    public String getFichiersPaths() {
+    public List<String> getFichiersPaths() {
         return fichiersPaths;
     }
 
-    public void setFichiersPaths(String fichiersPaths) {
-        this.fichiersPaths = fichiersPaths;
+    public void setFichiersPaths(List<String> fichierPath) {
+        this.fichiersPaths = fichierPath;
     }
 }

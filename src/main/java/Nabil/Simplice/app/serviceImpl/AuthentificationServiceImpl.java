@@ -55,7 +55,6 @@ public class AuthentificationServiceImpl implements AuthentificationService {
         response.setNom(savedUser.getNom());
         response.setPrenom(savedUser.getPrenom());
         response.setEmail(savedUser.getEmail());
-        response.setMotDePasse(savedUser.getMotDePasse());
         response.setRole(savedUser.getRole());
         response.setNumero(savedUser.getNumero());
         response.setDateNaissance(savedUser.getDateNaissance());

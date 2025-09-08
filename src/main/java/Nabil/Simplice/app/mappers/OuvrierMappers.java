@@ -47,7 +47,6 @@ public class OuvrierMappers extends UtilisateurMappers{
         ouvrierRes.setCni(ouvrier.getCni());
         ouvrierRes.setDateNaissance(ouvrier.getDateNaissance());
         ouvrierRes.setEmail(ouvrier.getEmail());
-        ouvrierRes.setMotDePasse(ouvrier.getMotDePasse());
         ouvrierRes.setNom(ouvrier.getNom());
         ouvrierRes.setPrenom(ouvrier.getPrenom());
         ouvrierRes.setNumero(ouvrier.getNumero());

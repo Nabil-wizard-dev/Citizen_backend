@@ -2,7 +2,7 @@ package Nabil.Simplice.app.serviceImpl;
 
 import Nabil.Simplice.app.entity.EtatDeTache;
 import Nabil.Simplice.app.repository.EtatDeTacheRepository;
-import Nabil.Simplice.app.service.FichierJoinService;
+import Nabil.Simplice.app.service.FileStorageService;
 import Nabil.Simplice.app.utils.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityNotFoundException;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,12 +27,12 @@ public class EtatDeTacheServiceImpl implements EtatDeTacheService {
     
     private final EtatDeTacheRepository repository;
     private final EtatDeTacheMappers mappers;
-    private final FichierJoinService fichierJoinService;
+    private final FileStorageService fileStorageService;
 
-    public EtatDeTacheServiceImpl(EtatDeTacheRepository repository, EtatDeTacheMappers mappers, FichierJoinService fichierJoinService) {
+    public EtatDeTacheServiceImpl(EtatDeTacheRepository repository, EtatDeTacheMappers mappers, FileStorageService fileStorageService) {
         this.repository = repository;
         this.mappers = mappers;
-        this.fichierJoinService = fichierJoinService;
+        this.fileStorageService = fileStorageService;
     }
 
 
@@ -50,36 +49,27 @@ public class EtatDeTacheServiceImpl implements EtatDeTacheService {
         }
     }
 
-    // nouvelle methode de creation
-//    @Override
-//    public ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTacheComplet(EtatDeTacheRequest request, MultipartFile fichiers) {
-//        try {
-//
-//            List<String> fichiersPaths = new ArrayList<>();// pour stocker les chemins
-//
-//            //mettre en place les fichiers join
-//            for (MultipartFile fichier : fichiers) {
-//                ResponseEntity<ApiResponse<String>> jsonResult = fichierJoinService.uploadFichier(fichier);
-//
-//                if (jsonResult.getBody().getData() != null) {
-//                    fichiersPaths.add(jsonResult.getBody().getData());
-//                }else{
-//                    fichiersPaths = null;
-//                }
-//            }
-//            System.out.println(fichiersPaths);
-//
-//            // creer le signalement
-////            UUID tacheUUID = UUID.fromString(request.getTache());
-//            request.setFichiersPaths(fichiersPaths); //mettre a jr le champ
-//            EtatDeTache saved = repository.save(mappers.toEntity(request));
-//
-//            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", mappers.toResponse(saved)));
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la recuparation", null));
-//        }
-//    }
+    @Override
+    public ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTacheAvecFichiers(EtatDeTacheRequest request, List<MultipartFile> fichiers) {
+        try {
+            // Créer l'état de tâche d'abord
+            EtatDeTache etatDeTache = mappers.toEntity(request);
+            EtatDeTache saved = repository.save(etatDeTache);
+
+            // Gérer les fichiers s'il y en a
+            if (fichiers != null && !fichiers.isEmpty()) {
+                List<String> filePaths = fileStorageService.storeFiles(fichiers);
+                saved.setFichiersPaths(filePaths);
+                saved = repository.save(saved);
+            }
+
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "État de tâche créé avec succès", mappers.toResponse(saved)));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de la création: " + e.getMessage(), null));
+        }
+    }
 
 @Override
 public ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTacheComplet(EtatDeTacheRequest request, MultipartFile fichier) {
@@ -87,11 +77,10 @@ public ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTacheComplet(
         String fichierPath = null;
 
         if (fichier != null && !fichier.isEmpty()) {
-            // Téléverser le fichier
-            ResponseEntity<ApiResponse<String>> jsonResult = fichierJoinService.uploadFichier(fichier);
-
-            if (jsonResult.getBody() != null && jsonResult.getBody().getData() != null) {
-                fichierPath = jsonResult.getBody().getData(); // chemin du fichier
+            // Téléverser le fichier via le service de stockage
+            List<String> paths = fileStorageService.storeFiles(java.util.List.of(fichier));
+            if (paths != null && !paths.isEmpty()) {
+                fichierPath = paths.get(0);
             } else {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ApiResponse<>(LocalDateTime.now(), false, "Échec de l'upload du fichier", null));
@@ -99,7 +88,7 @@ public ResponseEntity<ApiResponse<EtatDeTacheResponse>> creerEtatDeTacheComplet(
         }
 
         // Mettre à jour le chemin du fichier dans la requête
-        request.setFichiersPaths(fichierPath);
+        request.setFichiersPaths(fichierPath != null ? java.util.List.of(fichierPath) : null);
 
         // Sauvegarder l'entité
         EtatDeTache saved = repository.save(mappers.toEntity(request));

@@ -13,7 +13,6 @@ public class RegisterResponse {
 	private String cni;
 	private String dateNaissance;
 	private String email;
-	private String motDePasse;
 	private int numero;
 	private String adresse;
 	private UtilisateurRole role;
@@ -53,12 +52,6 @@ public class RegisterResponse {
 	}
 	public void setEmail(String email) {
 		this.email = email;
-	}
-	public String getMotDePasse() {
-		return motDePasse;
-	}
-	public void setMotDePasse(String motDePasse) {
-		this.motDePasse = motDePasse;
 	}
 	public int getNumero() {
 		return numero;

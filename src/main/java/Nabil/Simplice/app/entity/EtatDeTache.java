@@ -20,13 +20,10 @@ public class EtatDeTache extends AuditTable {
     @Column()
     private String description;
 
-    @OneToMany(mappedBy = "etatDeTache", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<FichierJoin> fichiers = new ArrayList<>();
-
-//    @ElementCollection
-//    @CollectionTable(name = "fichiers_paths", joinColumns = @JoinColumn(name = "signalement_id"))
-//    @Column(name = "fichier_path")
-    private String fichiersPaths ;
+    @ElementCollection
+    @CollectionTable(name = "etatdetache_fichiers_paths", joinColumns = @JoinColumn(name = "etatdetache_id"))
+    @Column(name = "fichier_path")
+    private List<String> fichiersPaths = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY) // Many instances of EtatDeTache related to One Tache
     @JoinColumn(name = "tache_id", nullable = false) // Foreign key in the EtatDeTache table
@@ -59,12 +56,12 @@ public class EtatDeTache extends AuditTable {
         this.description = description;
     }
 
-    public List<FichierJoin> getFichiers() {
-        return fichiers;
+    public List<String> getFichiersPaths() {
+        return fichiersPaths;
     }
 
-    public void setFichiers(List<FichierJoin> fichiers) {
-        this.fichiers = fichiers;
+    public void setFichiersPaths(List<String> fichiersPaths) {
+        this.fichiersPaths = fichiersPaths;
     }
 
     public Tache getTache() {
@@ -75,11 +72,4 @@ public class EtatDeTache extends AuditTable {
         this.tache = tache;
     }
 
-    public String getFichiersPaths() {
-        return fichiersPaths;
-    }
-
-    public void setFichiersPaths(String fichiersPaths) {
-        this.fichiersPaths = fichiersPaths;
-    }
 }

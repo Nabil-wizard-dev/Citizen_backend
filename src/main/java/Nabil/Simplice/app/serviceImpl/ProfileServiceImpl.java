@@ -4,7 +4,7 @@ import Nabil.Simplice.app.dto.request.ProfileUpdateRequest;
 import Nabil.Simplice.app.dto.response.ProfileResponse;
 import Nabil.Simplice.app.entity.Utilisateur;
 import Nabil.Simplice.app.repository.UtilisateurRepository;
-import Nabil.Simplice.app.service.FichierJoinService;
+import Nabil.Simplice.app.service.FileStorageService;
 import Nabil.Simplice.app.service.ProfileService;
 import Nabil.Simplice.app.utils.ApiResponse;
 import org.springframework.http.HttpStatus;
@@ -22,11 +22,11 @@ import java.util.UUID;
 public class ProfileServiceImpl implements ProfileService {
 
     private final UtilisateurRepository utilisateurRepository;
-    private final FichierJoinService fichierJoinService;
+    private final FileStorageService fileStorageService;
 
-    public ProfileServiceImpl(UtilisateurRepository utilisateurRepository, FichierJoinService fichierJoinService) {
+    public ProfileServiceImpl(UtilisateurRepository utilisateurRepository, FileStorageService fileStorageService) {
         this.utilisateurRepository = utilisateurRepository;
-        this.fichierJoinService = fichierJoinService;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -149,18 +149,11 @@ public class ProfileServiceImpl implements ProfileService {
             }
 
             // Uploader la nouvelle photo
-            ResponseEntity<ApiResponse<String>> uploadResult = fichierJoinService.uploadFichier(photo);
-            
-            if (uploadResult.getBody() != null && uploadResult.getBody().getData() != null) {
-                String photoPath = uploadResult.getBody().getData();
-                utilisateur.setPhotoProfil(photoPath);
-                utilisateurRepository.save(utilisateur);
+            String photoPath = fileStorageService.storeFile(photo);
+            utilisateur.setPhotoProfil(photoPath);
+            utilisateurRepository.save(utilisateur);
 
-                return ResponseEntity.ok(ApiResponse.success(photoPath, "Photo de profil uploadée avec succès"));
-            } else {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(ApiResponse.error("Erreur lors de l'upload de la photo"));
-            }
+            return ResponseEntity.ok(ApiResponse.success(photoPath, "Photo de profil uploadée avec succès"));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

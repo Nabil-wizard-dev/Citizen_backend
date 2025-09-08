@@ -2,25 +2,17 @@ package Nabil.Simplice.app.mappers;
 
 import Nabil.Simplice.app.repository.*;
 import org.springframework.stereotype.Component;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import Nabil.Simplice.app.entity.EtatDeTache;
-import Nabil.Simplice.app.entity.FichierJoin;
 import Nabil.Simplice.app.dto.request.EtatDeTacheRequest;
 import Nabil.Simplice.app.dto.response.EtatDeTacheResponse;
 
 @Component
 public class EtatDeTacheMappers {
     private final TacheRepository tacheRepository;
-    private final FichierJoinRepository fichierJoinRepository;
-
-    public EtatDeTacheMappers(
-            TacheRepository tacheRepository,
-            FichierJoinRepository fichierJoinRepository) {
+    public EtatDeTacheMappers(TacheRepository tacheRepository) {
         this.tacheRepository = tacheRepository;
-        this.fichierJoinRepository = fichierJoinRepository;
     }
 
     public EtatDeTache toEntity(EtatDeTacheRequest req) {
@@ -30,8 +22,6 @@ public class EtatDeTacheMappers {
 
         if (req.getFichiersPaths() != null) {
             etatDeTache.setFichiersPaths(req.getFichiersPaths());
-        }else {
-            etatDeTache.setFichiersPaths(null);
         }
 
         if (req.getTache() != null) {
@@ -42,14 +32,7 @@ public class EtatDeTacheMappers {
             etatDeTache.setTache(null);
         }
 
-        if (req.getFichiers() != null && !req.getFichiers().isEmpty()) {
-            List<UUID> ids = req.getFichiers();
-            List<FichierJoin> fichiers = ids.stream()
-                    .map(id -> fichierJoinRepository.findByTrackingId(id)
-                            .orElseThrow(() -> new RuntimeException("Aucun fichier trouvé pour l'ID : " + id)))
-                    .collect(Collectors.toList());
-            etatDeTache.setFichiers(fichiers);
-        }
+        // Les fichiers sont maintenant gérés directement par le service
 
         return etatDeTache;
     }
@@ -71,13 +54,7 @@ public class EtatDeTacheMappers {
             response.setFichiersPaths(null);
         }
 
-        if (etatDeTache.getFichiers() != null && !etatDeTache.getFichiers().isEmpty()) {
-            List<FichierJoin> fichiers = etatDeTache.getFichiers();
-            List<UUID> fichiersUUID = fichiers.stream()
-                    .map(FichierJoin::getTrackingId)
-                    .collect(Collectors.toList());
-            response.setFichiers(fichiersUUID);
-        }
+        // La gestion des anciens fichiers par UUID est supprimée
 
         return response;
     }

@@ -10,8 +10,8 @@ public class SignalementRequest {
     private String description;
     private TypeService typeService;
     private Long serviceId;
-    private List<UUID> fichiers;
-    private List<String> fichiersPaths;
+    // Note: Les fichiers sont maintenant gérés directement via MultipartFile dans les contrôleurs
+    // private List<UUID> fichiers;
     private String commentaireService;
     private Integer priorite;
     private String latitude;
@@ -84,13 +84,7 @@ public class SignalementRequest {
         this.longitude = longitude;
     }
 
-    public List<UUID> getFichiers() {
-        return fichiers;
-    }
-
-    public void setFichiers(List<UUID> fichiers) {
-        this.fichiers = fichiers;
-    }
+    // Méthodes getFichiers et setFichiers supprimées car les fichiers sont gérés via MultipartFile
 
     public String getCommentaireService() {
         return commentaireService;
@@ -116,11 +110,4 @@ public class SignalementRequest {
         this.ouvrierUuid = ouvrierUuid;
     }
 
-    public List<String> getFichiersPaths() {
-        return fichiersPaths;
-    }
-
-    public void setFichiersPaths(List<String> fichiersPaths) {
-        this.fichiersPaths = fichiersPaths;
-    }
 }

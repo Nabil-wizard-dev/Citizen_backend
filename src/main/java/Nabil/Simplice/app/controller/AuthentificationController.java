@@ -2,6 +2,7 @@ package Nabil.Simplice.app.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import Nabil.Simplice.app.dto.request.LoginRequest;
 import Nabil.Simplice.app.dto.request.RegisterRequest;
 import Nabil.Simplice.app.dto.response.LoginResponse;
@@ -36,12 +37,12 @@ public class AuthentificationController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authentificationService.register(request));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authentificationService.login(request));
     }
 
