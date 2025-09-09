@@ -13,7 +13,7 @@ public class RegisterRequest {
 	private String prenom;
 	
 	@NotBlank(message = "Le CNI est obligatoire")
-	@Pattern(regexp = "^[A-Z0-9]{8,15}$", message = "Format CNI invalide")
+	@Pattern(regexp = "^[0-9]{4}-[0-9]{3}-[0-9]{4}$", message = "Format CNI invalide. Format attendu: 7777-888-9999")
 	private String cni;
 	
 	@NotBlank(message = "La date de naissance est obligatoire")
