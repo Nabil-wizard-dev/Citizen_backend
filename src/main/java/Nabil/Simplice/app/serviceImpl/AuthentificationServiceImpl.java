@@ -67,18 +67,28 @@ public class AuthentificationServiceImpl implements AuthentificationService {
     @Override
     public LoginResponse login(LoginRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getMotDePasse()));
-        
-        Utilisateur user = utilisateurRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Email ou mot de passe invalide"));
-        
-        String jwt = jwtService.generateToken(user);
-        
-        LoginResponse response = new LoginResponse();
-        response.setToken(jwt);
-        response.setExpiresIn(3600L); // 1 heure en secondes
-        response.setRole(user.getRole());
-        return response;
+				new UsernamePasswordAuthenticationToken(
+						request.getEmail(),
+						request.getMotDePasse()));
+		
+		Utilisateur user = utilisateurRepository.findByEmail(request.getEmail())
+				.orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+		
+		String jwtToken = jwtService.generateToken(user);
+		
+		LoginResponse response = new LoginResponse();
+		response.setTrackingId(user.getTrackingId());
+		response.setNom(user.getNom());
+		response.setPrenom(user.getPrenom());
+		response.setEmail(user.getEmail());
+		response.setRole(user.getRole());
+		response.setNumero(user.getNumero());
+		response.setDateNaissance(user.getDateNaissance());
+		response.setAdresse(user.getAdresse());
+		response.setCni(user.getCni());
+		response.setToken(jwtToken);
+		
+		return response;
     }
 
     
