@@ -45,6 +45,11 @@ public class SignalementController {
         return signalementService.getAllByOuvrier(id);
     }
 
+    @GetMapping("allByUtilisateur/{id}")
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getAllSignalementsByUtilisateur(@PathVariable UUID id) {
+        return signalementService.getAllByUtilisateur(id);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<SignalementResponse>> getSignalementById(
         @PathVariable UUID id) {

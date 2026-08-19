@@ -38,8 +38,7 @@ public class SignalementResponse {
     private UUID ouvrierUuid;
     private UUID traiteurUuid;
 
-    // utilisateur qui cree le signalement
-    private UUID utilisateurCreateur;
+
 
 // Getters et setters
 

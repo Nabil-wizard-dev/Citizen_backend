@@ -90,7 +90,26 @@ public class SignalementMappers {
 
         response.setFichiersPaths(signalement.getFichiersPaths());
 
+        // l'auteur du signalement est trace par l'audit JPA (voir AuditConfiguration)
+        response.setUtilisateurCreateur(versUuid(signalement.getCreateBy()));
+
         return response;
     }
-    
+
+    /**
+     * createBy stocke le trackingId de l'auteur sous forme de chaine.
+     * Les signalements crees avant la mise en place de l'audit ont un createBy nul :
+     * on renvoie null plutot que de faire echouer toute la reponse.
+     */
+    private UUID versUuid(String valeur) {
+        if (valeur == null || valeur.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(valeur);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
 }

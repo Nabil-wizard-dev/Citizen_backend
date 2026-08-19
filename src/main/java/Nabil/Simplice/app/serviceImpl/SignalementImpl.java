@@ -196,6 +196,32 @@ public class SignalementImpl implements SignalementService {
     }
 
     @Override
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getAllByUtilisateur(UUID utilisateurId) {
+        try {
+            if (utilisateurId == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("L'identifiant de l'utilisateur est obligatoire"));
+            }
+
+            if (!utilisateurRepository.existsByTrackingId(utilisateurId)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("Utilisateur non trouvé avec l'ID : " + utilisateurId));
+            }
+
+            // createBy stocke le trackingId de l'auteur sous forme de chaine
+            List<SignalementResponse> all = repository.findByCreateByOrderByIdDesc(utilisateurId.toString())
+                    .stream()
+                    .map(mappers::toResponse)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(ApiResponse.success(all, "Signalements de l'utilisateur récupérés avec succès"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Erreur lors de la récupération des signalements de l'utilisateur"));
+        }
+    }
+
+    @Override
     public ResponseEntity<ApiResponse<SignalementResponse>> getById(UUID id) {
         try {
             SignalementResponse Response = repository.findByTrackingId(id)

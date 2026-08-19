@@ -27,6 +27,12 @@ public interface SignalementRepository extends JpaRepository<Signalement, Long> 
 
     boolean existsByTrackingId(UUID id);
 
+    /**
+     * Signalements crees par un utilisateur, le plus recent en premier.
+     * createBy (herite de AuditTable) contient le trackingId de l'auteur : voir AuditConfiguration.
+     */
+    List<Signalement> findByCreateByOrderByIdDesc(String createBy);
+
     // ---- regroupement par dossier (code SIG-xxxx) ----
 
     boolean existsByCode(String code);

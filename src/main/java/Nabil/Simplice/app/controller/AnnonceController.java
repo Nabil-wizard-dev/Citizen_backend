@@ -37,6 +37,7 @@ public class AnnonceController {
         return annonceService.getAllAnnonces();
     }
 
+    // recuperer des annonces qui sont relier a un signalement
     @GetMapping("getAllByEntite/{entityId}")
     public ResponseEntity<ApiResponse<List<AnnonceResponse>>> getAllAnnoncesByEntityId(@PathVariable UUID entityId){
         return annonceService.getAllAnnoncesByEntityId(entityId);

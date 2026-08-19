@@ -21,6 +21,9 @@ public interface SignalementService {
 
     public ResponseEntity<ApiResponse<List<SignalementResponse>>> getAllByOuvrier(UUID id);
 
+    // Récupérer les signalements créés par un utilisateur donné
+    ResponseEntity<ApiResponse<List<SignalementResponse>>> getAllByUtilisateur(UUID utilisateurId);
+
     // Récupérer un signalement par son id
     ResponseEntity<ApiResponse<SignalementResponse>> getById(UUID id);
 
