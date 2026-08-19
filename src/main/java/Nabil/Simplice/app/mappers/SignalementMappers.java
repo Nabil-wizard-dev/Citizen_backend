@@ -34,7 +34,7 @@ public class SignalementMappers {
         Signalement signalement = new Signalement();
         signalement.setTrackingId(UUID.randomUUID());
         signalement.setTitre(req.getTitre());
-        signalement.setCode(req.getCode());
+        // le code est attribue par le service (regroupement par position), pas par le client
         signalement.setDescription(req.getDescription());
         signalement.setTypeService(req.getTypeService());
         signalement.setServiceId(req.getServiceId());

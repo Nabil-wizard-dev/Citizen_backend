@@ -1,12 +1,24 @@
 package Nabil.Simplice.app.dto.request;
 
+import jakarta.validation.constraints.NotBlank;
+
 import java.util.List;
 import java.util.UUID;
 
 public class AnnonceRequest {
+    @NotBlank(message = "Le titre est obligatoire")
+    private String titre;
     private String Message;
     private List<String> FichierPaths;
     private UUID EntiteId;
+
+    public String getTitre() {
+        return titre;
+    }
+
+    public void setTitre(String titre) {
+        this.titre = titre;
+    }
 
     public String getMessage() {
         return Message;

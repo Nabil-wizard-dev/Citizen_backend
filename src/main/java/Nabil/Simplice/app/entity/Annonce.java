@@ -18,6 +18,9 @@ public class Annonce extends AuditTable {
     private UUID trackingId;
 
     @Column(nullable = false)
+    private String titre;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String Message;
 
     // pour stocker les images concernants l'annoces
@@ -45,6 +48,14 @@ public class Annonce extends AuditTable {
 
     public void setTrackingId(UUID trackingId) {
         this.trackingId = trackingId;
+    }
+
+    public String getTitre() {
+        return titre;
+    }
+
+    public void setTitre(String titre) {
+        this.titre = titre;
     }
 
     public String getMessage() {

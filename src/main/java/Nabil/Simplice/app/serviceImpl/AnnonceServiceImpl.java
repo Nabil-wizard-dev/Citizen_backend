@@ -3,8 +3,10 @@ package Nabil.Simplice.app.serviceImpl;
 import Nabil.Simplice.app.dto.request.AnnonceRequest;
 import Nabil.Simplice.app.dto.response.AnnonceResponse;
 import Nabil.Simplice.app.entity.Annonce;
+import Nabil.Simplice.app.entity.Signalement;
 import Nabil.Simplice.app.mappers.AnnonceMappers;
 import Nabil.Simplice.app.repository.AnnonceRepository;
+import Nabil.Simplice.app.repository.SignalementRepository;
 import Nabil.Simplice.app.service.AnnonceService;
 import Nabil.Simplice.app.service.FileStorageService;
 import Nabil.Simplice.app.utils.ApiResponse;
@@ -15,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -29,11 +30,13 @@ public class AnnonceServiceImpl implements AnnonceService {
     
     private AnnonceRepository repository;
     private AnnonceMappers mappers;
+    private SignalementRepository signalementRepository;
     private FileStorageService fileStorageService;
 
-    public AnnonceServiceImpl(AnnonceRepository repository, AnnonceMappers mappers, FileStorageService fileStorageService) {
+    public AnnonceServiceImpl(AnnonceRepository repository, AnnonceMappers mappers, SignalementRepository signalementRepository, FileStorageService fileStorageService) {
         this.repository = repository;
         this.mappers = mappers;
+        this.signalementRepository = signalementRepository;
         this.fileStorageService = fileStorageService;
     }
 
@@ -83,8 +86,8 @@ public class AnnonceServiceImpl implements AnnonceService {
             List<String> fichiersPaths = fileStorageService.storeFiles(fichiers);
             System.out.println(fichiersPaths);
 
-            // creer le signalement
-            a.setFichierPaths(fichiersPaths); //mettre a jr le champ
+            // creer l'annonce
+            a.setFichierPaths(fichiersPaths);
             Annonce saved = repository.save(mappers.toEntity(a));
 
             return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", mappers.toResponse(saved)));
@@ -93,6 +96,25 @@ public class AnnonceServiceImpl implements AnnonceService {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la creation", null));
         }
     }
+
+//    @Override
+//    public ResponseEntity<ApiResponse<AnnonceResponse>> addAnnonce(AnnonceRequest a) {
+//        try {
+//            // verification du signalement auquel l'annonce est reliee
+//            if (a.getEntiteId() == null || !signalementRepository.existsByTrackingId(a.getEntiteId())) {
+//                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiResponse<>(LocalDateTime.now(), true, "Signalement non trouvé avec l'ID : " + a.getEntiteId(), null));
+//            }
+//
+//            // renseigner les chemins des images du signalement
+//            a.setFichierPaths(a.getFichierPaths());
+//            Annonce saved = repository.save(mappers.toEntity(a));
+//
+//            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", mappers.toResponse(saved)));
+//        } catch (Exception e) {
+//            logger.error("Erreur lors de la création de l'annonce", e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la creation", null));
+//        }
+//    }
 
     @Override
     public ResponseEntity<ApiResponse<AnnonceResponse>> updateAnnonce(UUID id, AnnonceRequest a) {
@@ -107,6 +129,10 @@ public class AnnonceServiceImpl implements AnnonceService {
 
                 if (a.getEntiteId() != null) {
                     existingAnnonce.setEntiteId(a.getEntiteId());
+                }
+
+                if (a.getTitre() != null) {
+                    existingAnnonce.setTitre(a.getTitre());
                 }
 
                 if (a.getMessage() != null) {

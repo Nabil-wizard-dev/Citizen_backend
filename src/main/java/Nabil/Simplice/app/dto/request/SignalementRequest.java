@@ -6,7 +6,8 @@ import java.util.UUID;
 
 public class SignalementRequest {
     private String titre;
-    private String code;
+    // Note: le code n'est plus fourni par le client. Il est attribué par le serveur
+    // au moment de la création, en fonction de la position (regroupement par dossier).
     private String description;
     private TypeService typeService;
     private Long serviceId;
@@ -14,8 +15,8 @@ public class SignalementRequest {
     // private List<UUID> fichiers;
     private String commentaireService;
     private Integer priorite;
-    private String latitude;
-    private String longitude;
+    private Double latitude;
+    private Double longitude;
     private UUID ouvrierUuid;
     private UUID traiteurUuid;
 
@@ -26,14 +27,6 @@ public class SignalementRequest {
 
     public void setTitre(String titre) {
         this.titre = titre;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
     }
 
     public String getDescription() {
@@ -68,19 +61,19 @@ public class SignalementRequest {
         this.priorite = priorite;
     }
 
-    public String getLatitude() {
+    public Double getLatitude() {
         return latitude;
     }
 
-    public void setLatitude(String latitude) {
+    public void setLatitude(Double latitude) {
         this.latitude = latitude;
     }
 
-    public String getLongitude() {
+    public Double getLongitude() {
         return longitude;
     }
 
-    public void setLongitude(String longitude) {
+    public void setLongitude(Double longitude) {
         this.longitude = longitude;
     }
 

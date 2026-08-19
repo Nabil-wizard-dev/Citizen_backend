@@ -21,5 +21,4 @@ public interface AnnonceRepository extends JpaRepository<Annonce, Long> {
     @Query("select a from Annonce a where a.entiteId = ?1 ")
     List<Annonce> findAllByEntiteId(UUID entiteId);
 
-
 }

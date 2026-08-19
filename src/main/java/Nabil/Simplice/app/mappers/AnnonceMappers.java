@@ -12,6 +12,7 @@ public class AnnonceMappers {
     public Annonce toEntity(AnnonceRequest req){
         Annonce annonce = new Annonce();
         annonce.setTrackingId(UUID.randomUUID());
+        annonce.setTitre(req.getTitre());
         annonce.setMessage(req.getMessage());
         annonce.setFichiersPaths(req.getFichierPaths());
         annonce.setEntiteId(req.getEntiteId());
@@ -21,6 +22,7 @@ public class AnnonceMappers {
     public AnnonceResponse toResponse(Annonce annonce){
         AnnonceResponse response = new AnnonceResponse();
         response.setTrackingId(annonce.getTrackingId());
+        response.setTitre(annonce.getTitre());
         response.setMessage(annonce.getMessage());
         response.setEntiteId(annonce.getEntiteId());
         response.setFichierPaths(annonce.getFichiersPaths());

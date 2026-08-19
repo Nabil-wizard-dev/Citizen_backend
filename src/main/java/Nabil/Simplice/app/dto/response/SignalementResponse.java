@@ -33,10 +33,13 @@ public class SignalementResponse {
     private String commentaireService;
     // Priorité
     private Integer priorite;
-    private String latitude;
-    private String longitude;
+    private Double latitude;
+    private Double longitude;
     private UUID ouvrierUuid;
     private UUID traiteurUuid;
+
+    // utilisateur qui cree le signalement
+    private UUID utilisateurCreateur;
 
 // Getters et setters
 
@@ -112,19 +115,19 @@ public class SignalementResponse {
         this.priorite = priorite;
     }
 
-    public String getLatitude() {
+    public Double getLatitude() {
         return latitude;
     }
 
-    public void setLatitude(String latitude) {
+    public void setLatitude(Double latitude) {
         this.latitude = latitude;
     }
 
-    public String getLongitude() {
+    public Double getLongitude() {
         return longitude;
     }
 
-    public void setLongitude(String longitude) {
+    public void setLongitude(Double longitude) {
         this.longitude = longitude;
     }
 

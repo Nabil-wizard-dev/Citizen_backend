@@ -4,6 +4,8 @@ import Nabil.Simplice.app.entity.*;
 import Nabil.Simplice.app.repository.*;
 import Nabil.Simplice.app.service.FileStorageService;
 import Nabil.Simplice.app.utils.ApiResponse;
+import Nabil.Simplice.app.utils.GeoUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -12,7 +14,9 @@ import jakarta.persistence.EntityNotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,7 +34,14 @@ import java.util.Optional;
 @Service
 @Transactional
 public class SignalementImpl implements SignalementService {
-    
+
+    private static final String PREFIXE_CODE = "SIG-";
+    private static final int MAX_TENTATIVES_CODE = 10;
+
+    /** Rayon de regroupement en metres, ajustable sans recompiler. */
+    @Value("${application.signalement.rayon-regroupement:40}")
+    private double rayonRegroupementMetres;
+
     private final SignalementRepository repository;
     private final SignalementMappers mappers;
     private final UtilisateurRepository utilisateurRepository;
@@ -52,11 +63,94 @@ public class SignalementImpl implements SignalementService {
     }
 
 
+    /**
+     * Attribue le code du signalement (SIG-xxxx).
+     *
+     * Regle : si une ancre de dossier ouverte se trouve a moins de RAYON_REGROUPEMENT_M
+     * du nouveau signalement, celui-ci reprend son code. Sinon il ouvre un nouveau dossier.
+     *
+     * La distance est mesuree depuis l'ancre (le signalement le plus ancien du dossier)
+     * et jamais depuis un membre quelconque : sans cela, chaque nouveau membre elargirait
+     * la zone d'attraction du dossier de proche en proche.
+     */
+    private void attribuerCode(Signalement nouveau) {
+
+        // sans coordonnees, aucun regroupement possible : dossier neuf
+        if (nouveau.getLatitude() == null || nouveau.getLongitude() == null) {
+            nouveau.setCode(genererCodeUnique(nouveau));
+            return;
+        }
+
+        double lat = nouveau.getLatitude();
+        double lng = nouveau.getLongitude();
+        double dLat = GeoUtils.deltaLatitude(rayonRegroupementMetres);
+        double dLng = GeoUtils.deltaLongitude(rayonRegroupementMetres, lat);
+
+        // preselection : rectangle englobant, dossiers encore ouverts uniquement
+        List<Signalement> candidats = repository.findCandidatsDansZone(
+                lat - dLat, lat + dLat,
+                lng - dLng, lng + dLng,
+                List.of(StatutSignalement.EN_ATTENTE, StatutSignalement.EN_COURS));
+
+        // une seule ancre par code : la requete est triee par id, le premier vu est le plus ancien
+        Map<String, Signalement> ancres = new LinkedHashMap<>();
+        for (Signalement s : candidats) {
+            if (s.getCode() != null) {
+                ancres.putIfAbsent(s.getCode(), s);
+            }
+        }
+
+        // l'ancre la plus proche sous le rayon l'emporte
+        String codeRetenu = null;
+        double meilleureDistance = rayonRegroupementMetres;
+
+        for (Signalement ancre : ancres.values()) {
+            // un probleme d'hygiene et un probleme municipal au meme endroit restent distincts
+            if (ancre.getTypeService() != nouveau.getTypeService()) {
+                continue;
+            }
+            double distance = GeoUtils.distanceMetres(lat, lng, ancre.getLatitude(), ancre.getLongitude());
+            if (distance <= meilleureDistance) {
+                meilleureDistance = distance;
+                codeRetenu = ancre.getCode();
+            }
+        }
+
+        nouveau.setCode(codeRetenu != null ? codeRetenu : genererCodeUnique(nouveau));
+    }
+
+    /**
+     * Genere un code SIG-xxxx libre, ou xxxx est le 4e groupe du trackingId
+     * (clock_seq_hi_and_reserved + clock_seq_low).
+     *
+     * La variante RFC 4122 fixe les deux bits de poids fort de ce groupe, ce qui ramene
+     * l'espace reel a 16 384 combinaisons : la collision devient probable des quelques
+     * centaines de dossiers. D'ou la verification d'unicite et le tirage d'un nouveau
+     * trackingId tant que le code est deja pris.
+     */
+    private String genererCodeUnique(Signalement signalement) {
+        for (int i = 0; i < MAX_TENTATIVES_CODE; i++) {
+            UUID candidat = UUID.randomUUID();
+            String code = PREFIXE_CODE + candidat.toString().split("-")[3];
+            if (!repository.existsByCode(code)) {
+                // le trackingId retenu est celui dont derive le code
+                signalement.setTrackingId(candidat);
+                return code;
+            }
+        }
+        // filet de securite : segment elargi a 8 caracteres
+        return PREFIXE_CODE + UUID.randomUUID().toString().substring(0, 8);
+    }
+
     @Override
     public ResponseEntity<ApiResponse<SignalementResponse>> creerSignalement(SignalementRequest request, List<MultipartFile> fichiers) {
         try {
             // Créer le signalement d'abord
             Signalement signalement = mappers.toEntity(request);
+
+            // rattachement a un dossier existant, ou ouverture d'un nouveau dossier
+            attribuerCode(signalement);
+
             Signalement saved = repository.save(signalement);
 
             // Gérer les fichiers s'il y en a
@@ -130,9 +224,7 @@ public class SignalementImpl implements SignalementService {
                     existingSignalement.setTitre(req.getTitre());
                 }
 
-                if (req.getCode() != null) {
-                    existingSignalement.setCode(req.getCode());
-                }
+                // le code n'est jamais modifiable : il porte le rattachement au dossier
 
                 if (req.getDescription() != null) {
                     existingSignalement.setDescription(req.getDescription());
@@ -156,24 +248,14 @@ public class SignalementImpl implements SignalementService {
                     existingSignalement.setPriorite(req.getPriorite());
                 }
 
+                // Note: deplacer un signalement ne le fait pas changer de dossier.
+                // Le rattachement est decide une seule fois, a la creation.
                 if (req.getLatitude() != null) {
-                    try {
-//                        existingSignalement.setLatitude(Double.parseDouble(req.getLatitude()));
-                        existingSignalement.setLatitude(req.getLatitude());
-                    } catch (NumberFormatException e) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                                .body(new ApiResponse<>(LocalDateTime.now(), true, "Latitude invalide", null));
-                    }
+                    existingSignalement.setLatitude(req.getLatitude());
                 }
 
                 if (req.getLongitude() != null) {
-                    try {
-//                        existingSignalement.setLongitude(Double.parseDouble(req.getLongitude()));
-                        existingSignalement.setLongitude(req.getLongitude());
-                    } catch (NumberFormatException e) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                                .body(new ApiResponse<>(LocalDateTime.now(), true, "Longitude invalide", null));
-                    }
+                    existingSignalement.setLongitude(req.getLongitude());
                 }
 
                 if (req.getOuvrierUuid() != null) {
@@ -308,11 +390,31 @@ public class SignalementImpl implements SignalementService {
                 .filter(s -> s.getServiceId().equals(serviceId))
                 .map(mappers::toResponse)
                 .collect(Collectors.toList());
-            
+
             return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Signalements récupérés avec succès", signalements));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ApiResponse<>(LocalDateTime.now(), false, "Erreur lors de la récupération: " + e.getMessage(), null));
+        }
+    }
+
+    @Override
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByCode(String code) {
+        try {
+            List<SignalementResponse> dossier = repository.findByCodeOrderByIdAsc(code)
+                    .stream()
+                    .map(mappers::toResponse)
+                    .collect(Collectors.toList());
+
+            if (dossier.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ApiResponse<>(LocalDateTime.now(), true, "Aucun dossier pour le code : " + code, null));
+            }
+
+            return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), false, "Dossier récupéré avec succès", dossier));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse<>(LocalDateTime.now(), true, "Erreur lors de la récupération du dossier", null));
         }
     }
 

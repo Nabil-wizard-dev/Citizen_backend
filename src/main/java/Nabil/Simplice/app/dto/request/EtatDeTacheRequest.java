@@ -7,9 +7,6 @@ public class EtatDeTacheRequest {
 
     private String description;
 
-    // Note: Ancienne gestion des fichiers par UUID supprimée
-    // private List<UUID> fichiers ;
-
     private List<String> fichiersPaths;
 
     private UUID tache;

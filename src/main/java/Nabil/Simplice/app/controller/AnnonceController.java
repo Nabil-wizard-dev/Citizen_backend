@@ -4,6 +4,7 @@ import Nabil.Simplice.app.dto.request.AnnonceRequest;
 import Nabil.Simplice.app.dto.response.AnnonceResponse;
 import Nabil.Simplice.app.service.AnnonceService;
 import Nabil.Simplice.app.utils.ApiResponse;
+import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
@@ -51,6 +52,11 @@ public class AnnonceController {
                                                                    @RequestPart("files") List<MultipartFile> fichiers){
         return annonceService.addAnnonce(a,fichiers);
     }
+
+//    @PostMapping(value ="add")
+//    public ResponseEntity<ApiResponse<AnnonceResponse>> addAnnonce(@Valid @RequestPart("request") AnnonceRequest a){
+//        return annonceService.addAnnonce(a);
+//    }
 
     @PutMapping("update/{id}")
     public ResponseEntity<ApiResponse<AnnonceResponse>> updateAnnonce(@PathVariable UUID id,

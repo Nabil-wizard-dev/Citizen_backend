@@ -21,7 +21,7 @@ public class OuvrierController {
         this.ouvrierService = ouvrierService;
     }
 
-    @GetMapping("all")
+    @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<OuvrierResponse>>> getAllOuvriers() {
         return ouvrierService.getAll();
     }
@@ -31,7 +31,7 @@ public class OuvrierController {
         return ouvrierService.getById(id);
     }
 
-    @PostMapping("add")
+    @PostMapping("/add")
     public ResponseEntity<ApiResponse<OuvrierResponse>> createOuvrier(@RequestBody OuvrierRequest request) {
         return ouvrierService.creerOuvrier(request);
     }

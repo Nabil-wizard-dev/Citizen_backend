@@ -96,6 +96,12 @@ public class SignalementController {
         return signalementService.getSignalementsByPriorite(priorite);
     }
 
+    // Tous les signalements d'un même dossier (regroupement par position)
+    @GetMapping("/dossier/{code}")
+    public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByCode(@PathVariable String code) {
+        return signalementService.getSignalementsByCode(code);
+    }
+
     @GetMapping("/service/{serviceId}")
     public ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByService(@PathVariable Long serviceId) {
         return signalementService.getSignalementsByServiceId(serviceId);

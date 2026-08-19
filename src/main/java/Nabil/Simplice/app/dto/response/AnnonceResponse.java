@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public class AnnonceResponse {
     private UUID trackingId;
+    private String titre;
     private String Message;
     private List<String> FichierPaths;
     private UUID EntiteId;
@@ -17,6 +18,14 @@ public class AnnonceResponse {
 
     public void setTrackingId(UUID trackingId) {
         this.trackingId = trackingId;
+    }
+
+    public String getTitre() {
+        return titre;
+    }
+
+    public void setTitre(String titre) {
+        this.titre = titre;
     }
 
     public String getMessage() {

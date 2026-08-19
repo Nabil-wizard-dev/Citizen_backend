@@ -48,6 +48,9 @@ public interface SignalementService {
     // Récupérer les signalements par service
     ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByServiceId(Long serviceId);
 
+    // Récupérer tous les signalements d'un dossier (même code SIG-xxxx), l'ancre en premier
+    ResponseEntity<ApiResponse<List<SignalementResponse>>> getSignalementsByCode(String code);
+
     // Finaliser un signalement (changer le statut vers TRAITE)
     ResponseEntity<ApiResponse<SignalementResponse>> finaliserSignalement(String trackingId);
 
