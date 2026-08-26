@@ -4,6 +4,7 @@ import Nabil.Simplice.app.enums.TypeNotification;
 import Nabil.Simplice.app.utils.AuditTable;
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity @Table(name = "Notifications")
@@ -37,6 +38,28 @@ public class Notification extends AuditTable {
     @Enumerated(EnumType.STRING)
     @Column(length = 20, columnDefinition = "varchar(20)")
     private TypeNotification type;
+
+    /**
+     * Horodatage a la seconde, la ou createDate de AuditTable n'a qu'une precision au jour.
+     * C'est ce champ qui permet au front d'afficher "il y a 2 h".
+     *
+     * Colonne nullable a dessein : ddl-auto=update ajouterait une colonne NOT NULL sans
+     * valeur par defaut sur une table deja peuplee, ce que MySQL refuse en mode strict.
+     * Le @PrePersist ci-dessous garantit qu'aucune nouvelle ligne ne sort sans horodatage.
+     */
+    @Column(name = "date_creation", updatable = false)
+    private LocalDateTime dateCreation;
+
+    /** Filet de securite : toute notification est horodatee et identifiee a l'enregistrement. */
+    @PrePersist
+    protected void avantEnregistrement() {
+        if (trackingId == null) {
+            trackingId = UUID.randomUUID();
+        }
+        if (dateCreation == null) {
+            dateCreation = LocalDateTime.now();
+        }
+    }
 
     public Long getId() {
         return id;
@@ -92,5 +115,13 @@ public class Notification extends AuditTable {
 
     public void setType(TypeNotification type) {
         this.type = type;
+    }
+
+    public LocalDateTime getDateCreation() {
+        return dateCreation;
+    }
+
+    public void setDateCreation(LocalDateTime dateCreation) {
+        this.dateCreation = dateCreation;
     }
 }

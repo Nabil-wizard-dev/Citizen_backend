@@ -5,6 +5,7 @@ import Nabil.Simplice.app.dto.response.NotificationResponse;
 import Nabil.Simplice.app.entity.Notification;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Component
@@ -28,7 +29,18 @@ public class NotificationMappers {
         notifRes.setEntiteId(notif.getEntiteId());
         notifRes.setTrackingId(notif.getTrackingId());
         notifRes.setType(notif.getType());
-        notifRes.setDate(notif.getCreateDate());
+        notifRes.setDateCreation(horodatage(notif));
         return notifRes;
+    }
+
+    /**
+     * Les notifications creees avant l'ajout de la colonne date_creation n'ont que la date
+     * d'audit, au jour pres : on la ramene a minuit plutot que de renvoyer null au front.
+     */
+    private LocalDateTime horodatage(Notification notif) {
+        if (notif.getDateCreation() != null) {
+            return notif.getDateCreation();
+        }
+        return notif.getCreateDate() != null ? notif.getCreateDate().atStartOfDay() : null;
     }
 }

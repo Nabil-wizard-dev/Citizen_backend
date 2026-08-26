@@ -93,7 +93,7 @@ public class NotificationServiceImpl implements NotificationService {
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getByEntite(UUID id) {
         try {
             // une entite sans notification n'est pas une erreur : on renvoie une liste vide
-            List<NotificationResponse> responses = repository.findByEntiteIdOrderByIdDesc(id)
+            List<NotificationResponse> responses = repository.findByEntiteIdOrderByDateCreationDescIdDesc(id)
                     .stream()
                     .map(mappers::toResponse)
                     .collect(Collectors.toList());
@@ -111,7 +111,7 @@ public class NotificationServiceImpl implements NotificationService {
         try {
             // boite de reception vide = liste vide, surtout pas une 500 :
             // le front interroge cette route en boucle des la connexion
-            List<NotificationResponse> responses = repository.findByDestinataireIdOrderByIdDesc(id)
+            List<NotificationResponse> responses = repository.findByDestinataireIdOrderByDateCreationDescIdDesc(id)
                     .stream()
                     .map(mappers::toResponse)
                     .collect(Collectors.toList());
@@ -127,7 +127,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional(readOnly = true)
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNonLuesByDestinataire(UUID id) {
         try {
-            List<NotificationResponse> responses = repository.findByDestinataireIdOrderByIdDesc(id)
+            List<NotificationResponse> responses = repository.findByDestinataireIdOrderByDateCreationDescIdDesc(id)
                     .stream()
                     .filter(notification -> !notification.isLu())
                     .map(mappers::toResponse)

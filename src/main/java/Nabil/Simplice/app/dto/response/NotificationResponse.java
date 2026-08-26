@@ -2,7 +2,7 @@ package Nabil.Simplice.app.dto.response;
 
 import Nabil.Simplice.app.enums.TypeNotification;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class NotificationResponse {
@@ -18,8 +18,8 @@ public class NotificationResponse {
 
     private TypeNotification type;
 
-    /** Date de creation reprise de l'audit : le front s'en sert pour l'affichage. */
-    private LocalDate date;
+    /** Horodatage a la seconde : permet au front d'afficher un "il y a 2 h". */
+    private LocalDateTime dateCreation;
 
     public UUID getTrackingId() {
         return TrackingId;
@@ -69,11 +69,11 @@ public class NotificationResponse {
         this.type = type;
     }
 
-    public LocalDate getDate() {
-        return date;
+    public LocalDateTime getDateCreation() {
+        return dateCreation;
     }
 
-    public void setDate(LocalDate date) {
-        this.date = date;
+    public void setDateCreation(LocalDateTime dateCreation) {
+        this.dateCreation = dateCreation;
     }
 }

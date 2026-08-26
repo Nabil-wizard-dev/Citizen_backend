@@ -14,11 +14,12 @@ import java.util.UUID;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    // les listes sont triees du plus recent au plus ancien : c'est l'ordre
-    // d'affichage attendu par les deux front (web et mobile)
-    List<Notification> findByDestinataireIdOrderByIdDesc(UUID destinataireId);
+    // tri sur l'horodatage, pas sur l'id : l'ordre affiche doit coller aux dates
+    // que le front rend en "il y a 2 h". L'id departage les ex aequo, et les lignes
+    // sans date_creation (anterieures a la colonne) partent en fin de liste.
+    List<Notification> findByDestinataireIdOrderByDateCreationDescIdDesc(UUID destinataireId);
 
-    List<Notification> findByEntiteIdOrderByIdDesc(UUID entiteId);
+    List<Notification> findByEntiteIdOrderByDateCreationDescIdDesc(UUID entiteId);
 
     long countByDestinataireIdAndLuFalse(UUID destinataireId);
 
