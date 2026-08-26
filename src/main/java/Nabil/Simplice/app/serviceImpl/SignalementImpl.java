@@ -26,6 +26,7 @@ import Nabil.Simplice.app.dto.request.SignalementRequest;
 import Nabil.Simplice.app.dto.response.SignalementResponse;
 import Nabil.Simplice.app.dto.response.DevisResponse;
 import Nabil.Simplice.app.enums.StatutSignalement;
+import Nabil.Simplice.app.enums.TypeNotification;
 import Nabil.Simplice.app.enums.TypeService;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -50,8 +51,9 @@ public class SignalementImpl implements SignalementService {
     private final FileStorageService fileStorageService;
     private final DevisRepository devisRepository;
     private final RapportRepository rapportRepository;
+    private final NotificationPublisher notificationPublisher;
 
-    public SignalementImpl(SignalementRepository repository, SignalementMappers mappers, UtilisateurRepository utilisateurRepository, OuvrierRepository ouvrierRepository, AutoriteRepository autoriteRepository, FileStorageService fileStorageService, DevisRepository devisRepository, RapportRepository rapportRepository) {
+    public SignalementImpl(SignalementRepository repository, SignalementMappers mappers, UtilisateurRepository utilisateurRepository, OuvrierRepository ouvrierRepository, AutoriteRepository autoriteRepository, FileStorageService fileStorageService, DevisRepository devisRepository, RapportRepository rapportRepository, NotificationPublisher notificationPublisher) {
         this.repository = repository;
         this.mappers = mappers;
         this.utilisateurRepository = utilisateurRepository;
@@ -60,6 +62,12 @@ public class SignalementImpl implements SignalementService {
         this.fileStorageService = fileStorageService;
         this.devisRepository = devisRepository;
         this.rapportRepository = rapportRepository;
+        this.notificationPublisher = notificationPublisher;
+    }
+
+    /** Libelle court d'un signalement pour le texte des notifications. */
+    private String libelle(Signalement signalement) {
+        return signalement.getCode() != null ? signalement.getCode() : signalement.getTitre();
     }
 
 
@@ -159,7 +167,10 @@ public class SignalementImpl implements SignalementService {
                 saved.setFichiersPaths(filePaths);
                 saved = repository.save(saved);
             }
-            
+
+            notificationPublisher.notifierAuteur(saved.getCreateBy(), TypeNotification.SIGNALEMENT, saved.getTrackingId(),
+                    "Votre signalement " + libelle(saved) + " a bien été enregistré. Il est en attente de validation.");
+
             return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Signalement créé avec succès", mappers.toResponse(saved)));
         } catch (Exception e) {
             e.printStackTrace();
@@ -284,9 +295,21 @@ public class SignalementImpl implements SignalementService {
                     existingSignalement.setLongitude(req.getLongitude());
                 }
 
+                // retenu pour notifier apres la sauvegarde, et seulement si l'ouvrier change
+                // reellement : une mise a jour qui renvoie le meme ouvrier ne doit rien renotifier
+                Ouvrier ouvrierNouvellementAssigne = null;
+
                 if (req.getOuvrierUuid() != null) {
                     Ouvrier ouvrier = ouvrierRepository.findByTrackingId(req.getOuvrierUuid())
                             .orElseThrow(() -> new RuntimeException("Ouvrier introuvable pour l'UUID : " + req.getOuvrierUuid()));
+
+                    UUID ouvrierPrecedent = existingSignalement.getOuvrier() != null
+                            ? existingSignalement.getOuvrier().getTrackingId()
+                            : null;
+                    if (!ouvrier.getTrackingId().equals(ouvrierPrecedent)) {
+                        ouvrierNouvellementAssigne = ouvrier;
+                    }
+
                     existingSignalement.setOuvrier(ouvrier);
                 }
 
@@ -298,6 +321,18 @@ public class SignalementImpl implements SignalementService {
 
                 Signalement updatedSignalement = repository.save(existingSignalement);
                 SignalementResponse response = mappers.toResponse(updatedSignalement);
+
+                if (ouvrierNouvellementAssigne != null) {
+                    // c'est cette notification que l'application mobile de l'ouvrier releve
+                    notificationPublisher.notifier(ouvrierNouvellementAssigne.getTrackingId(),
+                            TypeNotification.SIGNALEMENT, updatedSignalement.getTrackingId(),
+                            "Un nouveau signalement vous a été assigné : " + libelle(updatedSignalement)
+                                    + " — " + updatedSignalement.getTitre());
+
+                    notificationPublisher.notifierAuteur(updatedSignalement.getCreateBy(),
+                            TypeNotification.SIGNALEMENT, updatedSignalement.getTrackingId(),
+                            "Un ouvrier a été assigné à votre signalement " + libelle(updatedSignalement) + ".");
+                }
 
                 return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), false, "Mise à jour réussie", response));
             }
@@ -336,7 +371,10 @@ public class SignalementImpl implements SignalementService {
             
             signalement.setStatut(statut);
             Signalement updated = repository.save(signalement);
-            
+
+            notificationPublisher.notifierAuteur(updated.getCreateBy(), TypeNotification.SIGNALEMENT, updated.getTrackingId(),
+                    "Votre signalement " + libelle(updated) + " est passé au statut : " + statut.name() + ".");
+
             return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "Statut mis à jour avec succès", mappers.toResponse(updated)));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -493,7 +531,16 @@ public class SignalementImpl implements SignalementService {
             // Finaliser le signalement (changer vers TRAITE)
             signalement.setStatut(StatutSignalement.TRAITE);
             Signalement updated = repository.save(signalement);
-            
+
+            notificationPublisher.notifierAuteur(updated.getCreateBy(), TypeNotification.SIGNALEMENT, updated.getTrackingId(),
+                    "Les travaux de votre signalement " + libelle(updated) + " sont terminés. Votre avis sera bientôt demandé.");
+
+            if (updated.getOuvrier() != null) {
+                notificationPublisher.notifier(updated.getOuvrier().getTrackingId(),
+                        TypeNotification.SIGNALEMENT, updated.getTrackingId(),
+                        "Le signalement " + libelle(updated) + " a été clôturé. Merci pour votre intervention.");
+            }
+
             return ResponseEntity.ok(ApiResponse.success(mappers.toResponse(updated), "Signalement finalisé avec succès"));
             
         } catch (Exception e) {
@@ -672,6 +719,10 @@ public class SignalementImpl implements SignalementService {
         Signalement s = repository.findByTrackingId(id).orElseThrow();
         s.setStatut(StatutSignalement.EN_COURS);
         repository.save(s);
+
+        notificationPublisher.notifierAuteur(s.getCreateBy(), TypeNotification.SIGNALEMENT, s.getTrackingId(),
+                "Votre signalement " + libelle(s) + " a été validé et pris en charge par le service concerné.");
+
         return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), false, "Signalement activé", null));
     }
 
@@ -680,6 +731,10 @@ public class SignalementImpl implements SignalementService {
         Signalement s = repository.findByTrackingId(id).orElseThrow();
         s.setStatut(StatutSignalement.REJETE);
         repository.save(s);
+
+        notificationPublisher.notifierAuteur(s.getCreateBy(), TypeNotification.SIGNALEMENT, s.getTrackingId(),
+                "Votre signalement " + libelle(s) + " a été rejeté par le service concerné.");
+
         return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), false, "Signalement rejeté", null));
     }
 
@@ -718,6 +773,10 @@ public class SignalementImpl implements SignalementService {
                 repository.save(signalement);
             }
             
+            notificationPublisher.notifierAuteur(signalement.getCreateBy(), TypeNotification.SIGNALEMENT,
+                    signalement.getTrackingId(),
+                    "Un nouveau rapport d'avancement a été déposé sur votre signalement " + libelle(signalement) + ".");
+
             System.out.println("Rapport d'avancement créé avec succès");
             System.out.println("TrackingId du rapport: " + savedRapport.getTrackingId());
             

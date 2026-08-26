@@ -1,6 +1,6 @@
 package Nabil.Simplice.app.dto.request;
 
-import jakarta.persistence.Column;
+import Nabil.Simplice.app.enums.TypeNotification;
 
 import java.util.UUID;
 
@@ -13,6 +13,8 @@ public class NotificationRequest {
     private UUID entiteId;
 
     private UUID destinataireId;
+
+    private TypeNotification type;
 
     public UUID getEntiteId() {
         return entiteId;
@@ -44,5 +46,13 @@ public class NotificationRequest {
 
     public void setLu(boolean lu) {
         this.lu = lu;
+    }
+
+    public TypeNotification getType() {
+        return type;
+    }
+
+    public void setType(TypeNotification type) {
+        this.type = type;
     }
 }

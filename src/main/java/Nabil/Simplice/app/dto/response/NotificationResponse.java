@@ -1,5 +1,8 @@
 package Nabil.Simplice.app.dto.response;
 
+import Nabil.Simplice.app.enums.TypeNotification;
+
+import java.time.LocalDate;
 import java.util.UUID;
 
 public class NotificationResponse {
@@ -12,6 +15,11 @@ public class NotificationResponse {
     private UUID entiteId;
 
     private UUID destinataireId;
+
+    private TypeNotification type;
+
+    /** Date de creation reprise de l'audit : le front s'en sert pour l'affichage. */
+    private LocalDate date;
 
     public UUID getTrackingId() {
         return TrackingId;
@@ -51,5 +59,21 @@ public class NotificationResponse {
 
     public void setLu(boolean lu) {
         this.lu = lu;
+    }
+
+    public TypeNotification getType() {
+        return type;
+    }
+
+    public void setType(TypeNotification type) {
+        this.type = type;
+    }
+
+    public LocalDate getDate() {
+        return date;
+    }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
     }
 }

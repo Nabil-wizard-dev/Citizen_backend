@@ -1,5 +1,6 @@
 package Nabil.Simplice.app.entity;
 
+import Nabil.Simplice.app.enums.TypeNotification;
 import Nabil.Simplice.app.utils.AuditTable;
 import jakarta.persistence.*;
 
@@ -16,7 +17,9 @@ public class Notification extends AuditTable {
     @Column(nullable = false, unique = true)
     protected UUID trackingId;
 
-    @Column(nullable = false)
+    // 500 caracteres : un message reprend le titre du signalement (jusqu'a 255)
+    // en plus de son propre libelle, ce qui deborde la longueur par defaut
+    @Column(nullable = false, length = 500)
     private String Message;
 
     @Column()
@@ -27,6 +30,13 @@ public class Notification extends AuditTable {
 
     @Column()
     private UUID destinataireId;
+
+    /** Nature de l'entite visee : permet au front de router le clic sur la notification. */
+    // varchar et non enum MySQL : ajouter une valeur a TypeNotification ne doit pas
+    // exiger un ALTER TABLE, ddl-auto=update ne modifiant jamais une colonne existante
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, columnDefinition = "varchar(20)")
+    private TypeNotification type;
 
     public Long getId() {
         return id;
@@ -74,5 +84,13 @@ public class Notification extends AuditTable {
 
     public void setLu(boolean lu) {
         this.lu = lu;
+    }
+
+    public TypeNotification getType() {
+        return type;
+    }
+
+    public void setType(TypeNotification type) {
+        this.type = type;
     }
 }

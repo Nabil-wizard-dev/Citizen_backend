@@ -16,6 +16,7 @@ public class NotificationMappers {
         notif.setLu(req.isLu());
         notif.setDestinataireId(req.getDestinataireId());
         notif.setEntiteId(req.getEntiteId());
+        notif.setType(req.getType());
         return notif;
     }
 
@@ -26,6 +27,8 @@ public class NotificationMappers {
         notifRes.setLu(notif.isLu());
         notifRes.setEntiteId(notif.getEntiteId());
         notifRes.setTrackingId(notif.getTrackingId());
+        notifRes.setType(notif.getType());
+        notifRes.setDate(notif.getCreateDate());
         return notifRes;
     }
 }

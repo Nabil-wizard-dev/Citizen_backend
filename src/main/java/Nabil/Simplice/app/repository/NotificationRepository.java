@@ -2,6 +2,9 @@ package Nabil.Simplice.app.repository;
 
 import Nabil.Simplice.app.entity.Notification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -10,10 +13,19 @@ import java.util.UUID;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
-    
 
-    Optional<List<Notification>> findByDestinataireId(UUID destinataireId);
-    Optional<List<Notification>> findByEntiteId(UUID entiteId);
+    // les listes sont triees du plus recent au plus ancien : c'est l'ordre
+    // d'affichage attendu par les deux front (web et mobile)
+    List<Notification> findByDestinataireIdOrderByIdDesc(UUID destinataireId);
+
+    List<Notification> findByEntiteIdOrderByIdDesc(UUID entiteId);
+
+    long countByDestinataireIdAndLuFalse(UUID destinataireId);
+
+    /** Marque d'un coup toutes les notifications non lues d'un destinataire (bouton "tout marquer comme lu"). */
+    @Modifying(clearAutomatically = true)
+    @Query("update Notification n set n.lu = true where n.destinataireId = :destinataireId and n.lu = false")
+    int marquerToutesLues(@Param("destinataireId") UUID destinataireId);
 
     Optional<Notification> findByTrackingId(UUID trackingId);
 

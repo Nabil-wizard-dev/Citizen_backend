@@ -8,6 +8,7 @@ import Nabil.Simplice.app.mappers.AnnonceMappers;
 import Nabil.Simplice.app.repository.AnnonceRepository;
 import Nabil.Simplice.app.repository.SignalementRepository;
 import Nabil.Simplice.app.service.AnnonceService;
+import Nabil.Simplice.app.enums.TypeNotification;
 import Nabil.Simplice.app.service.FileStorageService;
 import Nabil.Simplice.app.utils.ApiResponse;
 import jakarta.persistence.EntityNotFoundException;
@@ -32,12 +33,14 @@ public class AnnonceServiceImpl implements AnnonceService {
     private AnnonceMappers mappers;
     private SignalementRepository signalementRepository;
     private FileStorageService fileStorageService;
+    private NotificationPublisher notificationPublisher;
 
-    public AnnonceServiceImpl(AnnonceRepository repository, AnnonceMappers mappers, SignalementRepository signalementRepository, FileStorageService fileStorageService) {
+    public AnnonceServiceImpl(AnnonceRepository repository, AnnonceMappers mappers, SignalementRepository signalementRepository, FileStorageService fileStorageService, NotificationPublisher notificationPublisher) {
         this.repository = repository;
         this.mappers = mappers;
         this.signalementRepository = signalementRepository;
         this.fileStorageService = fileStorageService;
+        this.notificationPublisher = notificationPublisher;
     }
 
     @Override
@@ -89,6 +92,10 @@ public class AnnonceServiceImpl implements AnnonceService {
             // creer l'annonce
             a.setFichierPaths(fichiersPaths);
             Annonce saved = repository.save(mappers.toEntity(a));
+
+            // une annonce est publique : elle part vers toute la communaute
+            notificationPublisher.notifierTousLesCitoyens(TypeNotification.ANNONCE, saved.getTrackingId(),
+                    "Nouvelle annonce : " + saved.getTitre());
 
             return ResponseEntity.ok(new ApiResponse<>(LocalDateTime.now(), true, "succes", mappers.toResponse(saved)));
         } catch (Exception e) {

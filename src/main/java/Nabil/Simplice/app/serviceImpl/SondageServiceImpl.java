@@ -6,6 +6,7 @@ import Nabil.Simplice.app.entity.Signalement;
 import Nabil.Simplice.app.entity.Sondage;
 import Nabil.Simplice.app.enums.StatutSignalement;
 import Nabil.Simplice.app.enums.StatutSondage;
+import Nabil.Simplice.app.enums.TypeNotification;
 import Nabil.Simplice.app.mappers.SondageMappers;
 import Nabil.Simplice.app.repository.SignalementRepository;
 import Nabil.Simplice.app.repository.SondageFeedbackRepository;
@@ -35,15 +36,18 @@ public class SondageServiceImpl implements SondageService {
     private final SondageMappers mappers;
     private final SignalementRepository signalementRepository;
     private final SondageFeedbackRepository feedbackRepository;
+    private final NotificationPublisher notificationPublisher;
 
     public SondageServiceImpl(SondageRepository repository,
                               SondageMappers mappers,
                               SignalementRepository signalementRepository,
-                              SondageFeedbackRepository feedbackRepository) {
+                              SondageFeedbackRepository feedbackRepository,
+                              NotificationPublisher notificationPublisher) {
         this.repository = repository;
         this.mappers = mappers;
         this.signalementRepository = signalementRepository;
         this.feedbackRepository = feedbackRepository;
+        this.notificationPublisher = notificationPublisher;
     }
 
     @Override
@@ -122,6 +126,11 @@ public class SondageServiceImpl implements SondageService {
             }
 
             Sondage saved = repository.save(mappers.toEntity(request, signalement.get()));
+
+            // un sondage s'adresse a toute la communaute : tous les citoyens sont notifies
+            notificationPublisher.notifierTousLesCitoyens(TypeNotification.SONDAGE, saved.getTrackingId(),
+                    "Nouveau sondage : " + saved.getTitre() + ". Donnez votre avis sur les travaux réalisés.");
+
             return ResponseEntity.ok(ApiResponse.success(mappers.toResponse(saved), "Sondage créé avec succès"));
         } catch (DataIntegrityViolationException e) {
             // filet de securite si deux requetes arrivent en meme temps : la contrainte d'unicite tranche
@@ -199,6 +208,13 @@ public class SondageServiceImpl implements SondageService {
             sondage.setStatut(StatutSondage.CLOS);
 
             Sondage cloture = repository.save(sondage);
+
+            if (cloture.getSignalement() != null) {
+                notificationPublisher.notifierAuteur(cloture.getSignalement().getCreateBy(),
+                        TypeNotification.SONDAGE, cloture.getTrackingId(),
+                        "Le sondage « " + cloture.getTitre() + " » est clôturé. Les résultats sont disponibles.");
+            }
+
             return ResponseEntity.ok(ApiResponse.success(mappers.toResponse(cloture), "Sondage clôturé avec succès"));
         } catch (Exception e) {
             logger.error("Erreur lors de la clôture du sondage {}", id, e);
