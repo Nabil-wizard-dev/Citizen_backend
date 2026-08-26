@@ -2,7 +2,6 @@ package Nabil.Simplice.app.service;
 
 import Nabil.Simplice.app.dto.request.SondageFeedbackRequest;
 import Nabil.Simplice.app.dto.response.SondageFeedbackResponse;
-import Nabil.Simplice.app.dto.response.SondageStatistiqueResponse;
 import Nabil.Simplice.app.utils.ApiResponse;
 import org.springframework.http.ResponseEntity;
 
@@ -17,7 +16,8 @@ public interface SondageFeedbackService {
 
     ResponseEntity<ApiResponse<SondageFeedbackResponse>> getFeedbackById(UUID id);
 
-    ResponseEntity<ApiResponse<SondageStatistiqueResponse>> getStatistiques(UUID sondageId);
+    // La réponse de l'utilisateur connecté à un sondage : data à null s'il n'a pas encore répondu
+    ResponseEntity<ApiResponse<SondageFeedbackResponse>> getMaReponse(UUID sondageId);
 
     ResponseEntity<ApiResponse<SondageFeedbackResponse>> addFeedback(SondageFeedbackRequest request);
 

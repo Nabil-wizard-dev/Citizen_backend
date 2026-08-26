@@ -18,28 +18,26 @@ public interface SondageFeedbackRepository extends JpaRepository<SondageFeedback
 
     /**
      * Toutes les reponses d'un sondage, la plus recente en premier.
-     * Le "join fetch" charge l'auteur et le sondage dans la meme requete : sans lui,
+     * Le "join fetch" charge le citoyen et le sondage dans la meme requete : sans lui,
      * afficher 50 reponses declencherait 50 requetes supplementaires (probleme N+1).
      */
     @Query("select f from SondageFeedback f "
-         + "join fetch f.utilisateur "
+         + "join fetch f.citoyen "
          + "join fetch f.sondage s "
          + "where s.trackingId = ?1 "
          + "order by f.dateReponse desc")
     List<SondageFeedback> findBySondageTrackingId(UUID sondageTrackingId);
 
-    /** Un utilisateur ne repond qu'une seule fois a un sondage donne. */
-    boolean existsBySondageTrackingIdAndUtilisateurTrackingId(UUID sondageTrackingId, UUID utilisateurTrackingId);
+    /** La reponse d'un citoyen donne a un sondage donne : permet au front de savoir s'il a deja repondu. */
+    @Query("select f from SondageFeedback f "
+         + "join fetch f.citoyen c "
+         + "join fetch f.sondage s "
+         + "where s.trackingId = ?1 and c.trackingId = ?2")
+    Optional<SondageFeedback> findBySondageEtCitoyen(UUID sondageTrackingId, UUID citoyenTrackingId);
 
-    // ---- agregats : calcules par la base, aucune ligne n'est transferee ----
+    /** Un citoyen ne repond qu'une seule fois a un sondage donne. */
+    boolean existsBySondageTrackingIdAndCitoyenTrackingId(UUID sondageTrackingId, UUID citoyenTrackingId);
 
-    /** Nombre total de reponses recues par un sondage. */
-    long countBySondageTrackingId(UUID sondageTrackingId);
-
-    /** Nombre de reponses dans lesquelles l'utilisateur a confirme. */
-    long countBySondageTrackingIdAndConfirmationTrue(UUID sondageTrackingId);
-
-    /** Moyenne des notes. Renvoie null si le sondage n'a encore aucune reponse. */
-    @Query("select avg(f.note) from SondageFeedback f where f.sondage.trackingId = ?1")
-    Double moyenneNoteBySondage(UUID sondageTrackingId);
+    /** Supprime toutes les reponses d'un sondage. Appelee lors de la suppression du sondage. */
+    void deleteBySondageTrackingId(UUID sondageTrackingId);
 }

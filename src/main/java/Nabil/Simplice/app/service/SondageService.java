@@ -11,10 +11,18 @@ import java.util.UUID;
 public interface SondageService {
 
     ResponseEntity<ApiResponse<List<SondageResponse>>> getAllSondages();
-    ResponseEntity<ApiResponse<List<SondageResponse>>> getAllSondagesByEntityId(UUID entityId);
+
     ResponseEntity<ApiResponse<SondageResponse>> getSondageById(UUID id);
-    ResponseEntity<ApiResponse<SondageResponse>> addSondage(SondageRequest a);
-    ResponseEntity<ApiResponse<SondageResponse>> updateSondage(UUID id, SondageRequest a);
+
+    // Le sondage d'un signalement donné (il n'y en a qu'un au plus)
+    ResponseEntity<ApiResponse<SondageResponse>> getSondageBySignalement(UUID signalementId);
+
+    ResponseEntity<ApiResponse<SondageResponse>> addSondage(SondageRequest request);
+
+    ResponseEntity<ApiResponse<SondageResponse>> updateSondage(UUID id, SondageRequest request);
+
+    // Clôturer le sondage : fige le résultat et la moyenne finale
+    ResponseEntity<ApiResponse<SondageResponse>> cloturerSondage(UUID id);
+
     ResponseEntity<ApiResponse<Void>> deleteSondage(UUID id);
-    
 }

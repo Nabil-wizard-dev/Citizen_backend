@@ -9,20 +9,20 @@ public class SondageFeedbackResponse {
 
     private UUID sondageId;
 
+    private Boolean confirmation;
+
     private Integer note;
 
     private String commentaire;
 
-    private Boolean confirmation;
-
     private LocalDateTime dateReponse;
 
-    // identite de l'auteur, pour l'affichage cote tableau de bord
-    private UUID auteurId;
+    // identite du citoyen, pour l'affichage cote tableau de bord
+    private UUID citoyenId;
 
-    private String auteurNom;
+    private String citoyenNom;
 
-    private String auteurPrenom;
+    private String citoyenPrenom;
 
     // getters et setters
 
@@ -42,6 +42,14 @@ public class SondageFeedbackResponse {
         this.sondageId = sondageId;
     }
 
+    public Boolean getConfirmation() {
+        return confirmation;
+    }
+
+    public void setConfirmation(Boolean confirmation) {
+        this.confirmation = confirmation;
+    }
+
     public Integer getNote() {
         return note;
     }
@@ -58,14 +66,6 @@ public class SondageFeedbackResponse {
         this.commentaire = commentaire;
     }
 
-    public Boolean getConfirmation() {
-        return confirmation;
-    }
-
-    public void setConfirmation(Boolean confirmation) {
-        this.confirmation = confirmation;
-    }
-
     public LocalDateTime getDateReponse() {
         return dateReponse;
     }
@@ -74,27 +74,27 @@ public class SondageFeedbackResponse {
         this.dateReponse = dateReponse;
     }
 
-    public UUID getAuteurId() {
-        return auteurId;
+    public UUID getCitoyenId() {
+        return citoyenId;
     }
 
-    public void setAuteurId(UUID auteurId) {
-        this.auteurId = auteurId;
+    public void setCitoyenId(UUID citoyenId) {
+        this.citoyenId = citoyenId;
     }
 
-    public String getAuteurNom() {
-        return auteurNom;
+    public String getCitoyenNom() {
+        return citoyenNom;
     }
 
-    public void setAuteurNom(String auteurNom) {
-        this.auteurNom = auteurNom;
+    public void setCitoyenNom(String citoyenNom) {
+        this.citoyenNom = citoyenNom;
     }
 
-    public String getAuteurPrenom() {
-        return auteurPrenom;
+    public String getCitoyenPrenom() {
+        return citoyenPrenom;
     }
 
-    public void setAuteurPrenom(String auteurPrenom) {
-        this.auteurPrenom = auteurPrenom;
+    public void setCitoyenPrenom(String citoyenPrenom) {
+        this.citoyenPrenom = citoyenPrenom;
     }
 }

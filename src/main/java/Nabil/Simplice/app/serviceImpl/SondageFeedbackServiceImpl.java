@@ -2,10 +2,10 @@ package Nabil.Simplice.app.serviceImpl;
 
 import Nabil.Simplice.app.dto.request.SondageFeedbackRequest;
 import Nabil.Simplice.app.dto.response.SondageFeedbackResponse;
-import Nabil.Simplice.app.dto.response.SondageStatistiqueResponse;
 import Nabil.Simplice.app.entity.Sondage;
 import Nabil.Simplice.app.entity.SondageFeedback;
 import Nabil.Simplice.app.entity.Utilisateur;
+import Nabil.Simplice.app.enums.StatutSondage;
 import Nabil.Simplice.app.mappers.SondageFeedbackMappers;
 import Nabil.Simplice.app.repository.SondageFeedbackRepository;
 import Nabil.Simplice.app.repository.SondageRepository;
@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -99,54 +100,71 @@ public class SondageFeedbackServiceImpl implements SondageFeedbackService {
     }
 
     @Override
-    public ResponseEntity<ApiResponse<SondageStatistiqueResponse>> getStatistiques(UUID sondageId) {
+    public ResponseEntity<ApiResponse<SondageFeedbackResponse>> getMaReponse(UUID sondageId) {
         try {
+            Utilisateur citoyen = utilisateurConnecte();
+            if (citoyen == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("Utilisateur non authentifié"));
+            }
+
             if (!sondageRepository.existsSondageByTrackingId(sondageId)) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("Sondage non trouvé avec l'ID : " + sondageId));
             }
 
-            long total = repository.countBySondageTrackingId(sondageId);
-            long confirmations = repository.countBySondageTrackingIdAndConfirmationTrue(sondageId);
-            Double moyenne = repository.moyenneNoteBySondage(sondageId);
+            Optional<SondageFeedback> feedback =
+                    repository.findBySondageEtCitoyen(sondageId, citoyen.getTrackingId());
 
-            // aucune reponse : on renvoie des zeros plutot qu'un null, le client n'a rien a gerer
-            double moyenneArrondie = (moyenne == null) ? 0d : Math.round(moyenne * 10d) / 10d;
-            double taux = (total == 0) ? 0d : Math.round((confirmations * 1000d) / total) / 10d;
+            // pas de 404 ici : "je n'ai pas encore repondu" est une reponse normale pour le front
+            if (feedback.isEmpty()) {
+                return ResponseEntity.ok(ApiResponse.success(null, "Vous n'avez pas encore répondu à ce sondage"));
+            }
 
-            SondageStatistiqueResponse statistiques =
-                    new SondageStatistiqueResponse(sondageId, moyenneArrondie, total, confirmations, taux);
-            return ResponseEntity.ok(ApiResponse.success(statistiques, "Statistiques calculées avec succès"));
+            return ResponseEntity.ok(ApiResponse.success(mappers.toResponse(feedback.get()),
+                    "Votre réponse a été récupérée avec succès"));
         } catch (Exception e) {
-            logger.error("Erreur lors du calcul des statistiques du sondage {}", sondageId, e);
+            logger.error("Erreur lors de la récupération de la réponse au sondage {}", sondageId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Erreur lors du calcul des statistiques"));
+                    .body(ApiResponse.error("Erreur lors de la récupération de votre réponse"));
         }
     }
 
     @Override
+    @Transactional
     public ResponseEntity<ApiResponse<SondageFeedbackResponse>> addFeedback(SondageFeedbackRequest request) {
         try {
-            Utilisateur auteur = utilisateurConnecte();
-            if (auteur == null) {
+            Utilisateur citoyen = utilisateurConnecte();
+            if (citoyen == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.error("Utilisateur non authentifié"));
             }
 
-            Optional<Sondage> sondage = sondageRepository.findByTrackingId(request.getSondageId());
-            if (sondage.isEmpty()) {
+            Optional<Sondage> sondageOpt = sondageRepository.findByTrackingId(request.getSondageId());
+            if (sondageOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("Sondage non trouvé avec l'ID : " + request.getSondageId()));
             }
 
-            // un utilisateur ne repond qu'une fois : evite les doublons qui fausseraient la moyenne
-            if (repository.existsBySondageTrackingIdAndUtilisateurTrackingId(
-                    request.getSondageId(), auteur.getTrackingId())) {
+            Sondage sondage = sondageOpt.get();
+
+            if (sondage.getStatut() != StatutSondage.OUVERT) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.error("Ce sondage est clôturé : il n'accepte plus de réponse"));
+            }
+
+            // un citoyen ne repond qu'une fois : evite les doublons qui fausseraient les compteurs
+            if (repository.existsBySondageTrackingIdAndCitoyenTrackingId(
+                    request.getSondageId(), citoyen.getTrackingId())) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(ApiResponse.error("Vous avez déjà répondu à ce sondage"));
             }
 
-            SondageFeedback saved = repository.save(mappers.toEntity(request, sondage.get(), auteur));
+            SondageFeedback saved = repository.save(mappers.toEntity(request, sondage, citoyen));
+
+            incrementerCompteurs(sondage, saved.getConfirmation(), saved.getNote());
+            sondageRepository.save(sondage);
+
             return ResponseEntity.ok(ApiResponse.success(mappers.toResponse(saved),
                     "Réponse enregistrée avec succès"));
         } catch (DataIntegrityViolationException e) {
@@ -162,10 +180,11 @@ public class SondageFeedbackServiceImpl implements SondageFeedbackService {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<ApiResponse<SondageFeedbackResponse>> updateFeedback(UUID id, SondageFeedbackRequest request) {
         try {
-            Utilisateur auteur = utilisateurConnecte();
-            if (auteur == null) {
+            Utilisateur citoyen = utilisateurConnecte();
+            if (citoyen == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.error("Utilisateur non authentifié"));
             }
@@ -178,24 +197,36 @@ public class SondageFeedbackServiceImpl implements SondageFeedbackService {
 
             SondageFeedback feedback = existant.get();
 
-            // seul l'auteur modifie sa reponse : une mairie ne peut pas réécrire les avis recus
-            if (!feedback.getUtilisateur().getTrackingId().equals(auteur.getTrackingId())) {
+            // seul l'auteur modifie sa reponse : une mairie ne peut pas réécrire les avis reçus
+            if (!feedback.getCitoyen().getTrackingId().equals(citoyen.getTrackingId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("Vous ne pouvez modifier que votre propre réponse"));
             }
 
-            // le sondage et l'auteur ne changent jamais : seul le contenu de la reponse est modifiable
+            Sondage sondage = feedback.getSondage();
+            if (sondage.getStatut() != StatutSondage.OUVERT) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.error("Ce sondage est clôturé : votre réponse ne peut plus être modifiée"));
+            }
+
+            // on retire l'ancienne contribution des compteurs avant d'appliquer la nouvelle
+            decrementerCompteurs(sondage, feedback.getConfirmation(), feedback.getNote());
+
+            if (request.getConfirmation() != null) {
+                feedback.setConfirmation(request.getConfirmation());
+            }
             if (request.getNote() != null) {
                 feedback.setNote(request.getNote());
             }
             if (request.getCommentaire() != null) {
                 feedback.setCommentaire(request.getCommentaire());
             }
-            if (request.getConfirmation() != null) {
-                feedback.setConfirmation(request.getConfirmation());
-            }
+
+            incrementerCompteurs(sondage, feedback.getConfirmation(), feedback.getNote());
 
             SondageFeedback updated = repository.save(feedback);
+            sondageRepository.save(sondage);
+
             return ResponseEntity.ok(ApiResponse.success(mappers.toResponse(updated), "Mise à jour réussie"));
         } catch (Exception e) {
             logger.error("Erreur lors de la mise à jour de la réponse {}", id, e);
@@ -205,10 +236,11 @@ public class SondageFeedbackServiceImpl implements SondageFeedbackService {
     }
 
     @Override
+    @Transactional
     public ResponseEntity<ApiResponse<Void>> deleteFeedback(UUID id) {
         try {
-            Utilisateur auteur = utilisateurConnecte();
-            if (auteur == null) {
+            Utilisateur citoyen = utilisateurConnecte();
+            if (citoyen == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(ApiResponse.error("Utilisateur non authentifié"));
             }
@@ -221,12 +253,22 @@ public class SondageFeedbackServiceImpl implements SondageFeedbackService {
 
             SondageFeedback feedback = existant.get();
 
-            if (!feedback.getUtilisateur().getTrackingId().equals(auteur.getTrackingId())) {
+            if (!feedback.getCitoyen().getTrackingId().equals(citoyen.getTrackingId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(ApiResponse.error("Vous ne pouvez supprimer que votre propre réponse"));
             }
 
+            Sondage sondage = feedback.getSondage();
+            if (sondage.getStatut() != StatutSondage.OUVERT) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(ApiResponse.error("Ce sondage est clôturé : votre réponse ne peut plus être retirée"));
+            }
+
+            decrementerCompteurs(sondage, feedback.getConfirmation(), feedback.getNote());
+
             repository.delete(feedback);
+            sondageRepository.save(sondage);
+
             return ResponseEntity.ok(ApiResponse.success(null, "Réponse supprimée avec succès"));
         } catch (Exception e) {
             logger.error("Erreur lors de la suppression de la réponse {}", id, e);
@@ -235,9 +277,36 @@ public class SondageFeedbackServiceImpl implements SondageFeedbackService {
         }
     }
 
+    // ---- maintenance des compteurs denormalises du sondage ----
+
+    private void incrementerCompteurs(Sondage sondage, Boolean confirmation, Integer note) {
+        if (Boolean.TRUE.equals(confirmation)) {
+            sondage.setNbOui(sondage.getNbOui() + 1);
+        } else {
+            sondage.setNbNon(sondage.getNbNon() + 1);
+        }
+        if (note != null) {
+            sondage.setNbNotes(sondage.getNbNotes() + 1);
+            sondage.setSommeNotes(sondage.getSommeNotes() + note);
+        }
+    }
+
+    /** Les Math.max evitent qu'un compteur passe sous zero si une derive s'est installee. */
+    private void decrementerCompteurs(Sondage sondage, Boolean confirmation, Integer note) {
+        if (Boolean.TRUE.equals(confirmation)) {
+            sondage.setNbOui(Math.max(0, sondage.getNbOui() - 1));
+        } else {
+            sondage.setNbNon(Math.max(0, sondage.getNbNon() - 1));
+        }
+        if (note != null) {
+            sondage.setNbNotes(Math.max(0, sondage.getNbNotes() - 1));
+            sondage.setSommeNotes(Math.max(0, sondage.getSommeNotes() - note));
+        }
+    }
+
     /**
      * Utilisateur porte par le token courant.
-     * Le filtre JWT place l'email dans le contexte de securite : on repart de la.
+     * Le filtre JWT place l'entite Utilisateur dans le contexte de securite : on repart de la.
      * Renvoie null si la requete n'est pas authentifiee.
      */
     private Utilisateur utilisateurConnecte() {

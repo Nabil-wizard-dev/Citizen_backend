@@ -4,23 +4,24 @@ import Nabil.Simplice.app.utils.AuditTable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
+import org.hibernate.annotations.Check;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Reponse d'un utilisateur a un sondage.
+ * Reponse d'un citoyen a un sondage.
  *
- * Un sondage recoit plusieurs feedbacks ; un utilisateur ne peut en deposer qu'un seul
- * par sondage (contrainte d'unicite sondage_id + utilisateur_id).
+ * Un sondage recoit plusieurs reponses ; un citoyen ne peut en deposer qu'une seule
+ * par sondage (contrainte d'unicite sondage_id + citoyen_id).
  */
 @Entity
 @Table(name = "sondage_feedbacks",
        uniqueConstraints = @UniqueConstraint(
-               name = "uk_feedback_sondage_utilisateur",
-               columnNames = {"sondage_id", "utilisateur_id"}),
+               name = "uk_feedback_sondage_citoyen",
+               columnNames = {"sondage_id", "citoyen_id"}),
        indexes = @Index(name = "idx_feedback_sondage", columnList = "sondage_id"))
+@Check(name = "ck_feedback_note", constraints = "note is null or (note between 1 and 5)")
 public class SondageFeedback extends AuditTable {
 
     @Id
@@ -30,36 +31,32 @@ public class SondageFeedback extends AuditTable {
     @Column(nullable = false, unique = true, updatable = false)
     private UUID trackingId;
 
-    /**
-     * Reponse a la question fermee du sondage.
-     * Objet et non primitif : null signifie "l'utilisateur n'a pas repondu",
-     * ce qui n'est pas la meme chose que false.
-     */
-    @Column
-    private Boolean confirmation;
-
-    /** Note de 1 a 5. Integer et non int : 0 n'est pas une reponse valide. */
-    @Column(nullable = false)
-    @NotNull @Min(1) @Max(5)
-    private Integer note;
-
-    /** Facultatif : on peut noter sans commenter. */
-    @Column(length = 500)
-    private String commentaire;
-
-    /** Le sondage auquel cette reponse se rattache. Plusieurs feedbacks pour un meme sondage. */
+    /** Le sondage auquel cette reponse se rattache. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "sondage_id", nullable = false, updatable = false)
     private Sondage sondage;
 
     /**
-     * L'utilisateur qui repond.
+     * Le citoyen qui repond.
      * Type Utilisateur et non Citoyen : les comptes crees via /api/auth/register portent
      * le discriminant de base, un mapping vers Citoyen les rendrait inutilisables ici.
      */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "utilisateur_id", nullable = false, updatable = false)
-    private Utilisateur utilisateur;
+    @JoinColumn(name = "citoyen_id", nullable = false, updatable = false)
+    private Utilisateur citoyen;
+
+    /** Reponse a la question fermee du sondage : les travaux sont-ils confirmes ? */
+    @Column(nullable = false)
+    private Boolean confirmation;
+
+    /** Facultative : on peut confirmer sans noter. */
+    @Column
+    @Min(1) @Max(5)
+    private Integer note;
+
+    /** Facultatif : on peut noter sans commenter. */
+    @Column(length = 500)
+    private String commentaire;
 
     /**
      * Horodatage precis de la reponse.
@@ -104,6 +101,22 @@ public class SondageFeedback extends AuditTable {
         this.trackingId = trackingId;
     }
 
+    public Sondage getSondage() {
+        return sondage;
+    }
+
+    public void setSondage(Sondage sondage) {
+        this.sondage = sondage;
+    }
+
+    public Utilisateur getCitoyen() {
+        return citoyen;
+    }
+
+    public void setCitoyen(Utilisateur citoyen) {
+        this.citoyen = citoyen;
+    }
+
     public Boolean getConfirmation() {
         return confirmation;
     }
@@ -126,22 +139,6 @@ public class SondageFeedback extends AuditTable {
 
     public void setCommentaire(String commentaire) {
         this.commentaire = commentaire;
-    }
-
-    public Sondage getSondage() {
-        return sondage;
-    }
-
-    public void setSondage(Sondage sondage) {
-        this.sondage = sondage;
-    }
-
-    public Utilisateur getUtilisateur() {
-        return utilisateur;
-    }
-
-    public void setUtilisateur(Utilisateur utilisateur) {
-        this.utilisateur = utilisateur;
     }
 
     public LocalDateTime getDateReponse() {

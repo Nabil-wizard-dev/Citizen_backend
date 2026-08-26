@@ -14,17 +14,17 @@ import java.util.UUID;
 public class SondageFeedbackMappers {
 
     /**
-     * Le sondage et l'auteur ne viennent pas de la requete : ils sont resolus par le service
-     * (le sondage depuis son trackingId, l'auteur depuis le token).
+     * Le sondage et le citoyen ne viennent pas de la requete : ils sont resolus par le service
+     * (le sondage depuis son trackingId, le citoyen depuis le token).
      */
-    public SondageFeedback toEntity(SondageFeedbackRequest request, Sondage sondage, Utilisateur utilisateur) {
+    public SondageFeedback toEntity(SondageFeedbackRequest request, Sondage sondage, Utilisateur citoyen) {
         SondageFeedback feedback = new SondageFeedback();
         feedback.setTrackingId(UUID.randomUUID());
+        feedback.setConfirmation(request.getConfirmation());
         feedback.setNote(request.getNote());
         feedback.setCommentaire(request.getCommentaire());
-        feedback.setConfirmation(request.getConfirmation());
         feedback.setSondage(sondage);
-        feedback.setUtilisateur(utilisateur);
+        feedback.setCitoyen(citoyen);
         feedback.setDateReponse(LocalDateTime.now());
         return feedback;
     }
@@ -32,20 +32,20 @@ public class SondageFeedbackMappers {
     public SondageFeedbackResponse toResponse(SondageFeedback feedback) {
         SondageFeedbackResponse response = new SondageFeedbackResponse();
         response.setTrackingId(feedback.getTrackingId());
+        response.setConfirmation(feedback.getConfirmation());
         response.setNote(feedback.getNote());
         response.setCommentaire(feedback.getCommentaire());
-        response.setConfirmation(feedback.getConfirmation());
         response.setDateReponse(feedback.getDateReponse());
 
         if (feedback.getSondage() != null) {
             response.setSondageId(feedback.getSondage().getTrackingId());
         }
 
-        if (feedback.getUtilisateur() != null) {
-            Utilisateur auteur = feedback.getUtilisateur();
-            response.setAuteurId(auteur.getTrackingId());
-            response.setAuteurNom(auteur.getNom());
-            response.setAuteurPrenom(auteur.getPrenom());
+        if (feedback.getCitoyen() != null) {
+            Utilisateur citoyen = feedback.getCitoyen();
+            response.setCitoyenId(citoyen.getTrackingId());
+            response.setCitoyenNom(citoyen.getNom());
+            response.setCitoyenPrenom(citoyen.getPrenom());
         }
 
         return response;

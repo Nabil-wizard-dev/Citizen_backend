@@ -1,49 +1,47 @@
 package Nabil.Simplice.app.dto.request;
 
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
 
 public class SondageRequest {
 
-    private boolean confirmation;
-    @Max(5) @Min(1)
-    private int note;
-    private String commentaire;
-    private UUID entiteId;
+    @NotBlank(message = "Le titre est obligatoire")
+    private String titre;
+
+    @NotBlank(message = "La description est obligatoire")
+    @Size(max = 1000, message = "La description ne peut pas dépasser 1000 caractères")
+    private String description;
+
+    /** Le signalement sur lequel porte le sondage. Ignoré lors d'une mise à jour. */
+    @NotNull(message = "L'identifiant du signalement est obligatoire")
+    private UUID signalementId;
 
     // getters et setters
 
-    public boolean isConfirmation() {
-        return confirmation;
+    public String getTitre() {
+        return titre;
     }
 
-    public void setConfirmation(boolean confirmation) {
-        this.confirmation = confirmation;
+    public void setTitre(String titre) {
+        this.titre = titre;
     }
 
-    public int getNote() {
-        return note;
+    public String getDescription() {
+        return description;
     }
 
-    public void setNote(int note) {
-        this.note = note;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
-    public String getCommentaire() {
-        return commentaire;
+    public UUID getSignalementId() {
+        return signalementId;
     }
 
-    public void setCommentaire(String commentaire) {
-        this.commentaire = commentaire;
-    }
-
-    public UUID getEntiteId() {
-        return entiteId;
-    }
-
-    public void setEntiteId(UUID entiteId) {
-        this.entiteId = entiteId;
+    public void setSignalementId(UUID signalementId) {
+        this.signalementId = signalementId;
     }
 }

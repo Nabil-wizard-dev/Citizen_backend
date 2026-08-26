@@ -4,6 +4,7 @@ import Nabil.Simplice.app.dto.request.SondageRequest;
 import Nabil.Simplice.app.dto.response.SondageResponse;
 import Nabil.Simplice.app.service.SondageService;
 import Nabil.Simplice.app.utils.ApiResponse;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -33,25 +34,30 @@ public class SondageController {
         return sondageService.getAllSondages();
     }
 
-    @GetMapping("getAllByEntite/{entityId}")
-    public ResponseEntity<ApiResponse<List<SondageResponse>>> getAllSondagesByEntityId(@PathVariable UUID entityId){
-        return sondageService.getAllSondagesByEntityId(entityId);
-    }
-
     @GetMapping("getById/{id}")
     public ResponseEntity<ApiResponse<SondageResponse>> getSondageById(@PathVariable UUID id){
         return sondageService.getSondageById(id);
     }
 
+    @GetMapping("getBySignalement/{signalementId}")
+    public ResponseEntity<ApiResponse<SondageResponse>> getSondageBySignalement(@PathVariable UUID signalementId){
+        return sondageService.getSondageBySignalement(signalementId);
+    }
+
     @PostMapping("add")
-    public ResponseEntity<ApiResponse<SondageResponse>> addSondage(@RequestBody SondageRequest a){
-        return sondageService.addSondage(a);
+    public ResponseEntity<ApiResponse<SondageResponse>> addSondage(@Valid @RequestBody SondageRequest request){
+        return sondageService.addSondage(request);
     }
 
     @PutMapping("update/{id}")
     public ResponseEntity<ApiResponse<SondageResponse>> updateSondage(@PathVariable UUID id,
-                                                                      @RequestBody SondageRequest a){
-        return sondageService.updateSondage(id,a);
+                                                                      @RequestBody SondageRequest request){
+        return sondageService.updateSondage(id, request);
+    }
+
+    @PostMapping("cloturer/{id}")
+    public ResponseEntity<ApiResponse<SondageResponse>> cloturerSondage(@PathVariable UUID id){
+        return sondageService.cloturerSondage(id);
     }
 
     @DeleteMapping("delete/{id}")

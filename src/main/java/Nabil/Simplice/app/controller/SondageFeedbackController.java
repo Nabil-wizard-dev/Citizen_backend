@@ -2,7 +2,6 @@ package Nabil.Simplice.app.controller;
 
 import Nabil.Simplice.app.dto.request.SondageFeedbackRequest;
 import Nabil.Simplice.app.dto.response.SondageFeedbackResponse;
-import Nabil.Simplice.app.dto.response.SondageStatistiqueResponse;
 import Nabil.Simplice.app.service.SondageFeedbackService;
 import Nabil.Simplice.app.utils.ApiResponse;
 import jakarta.validation.Valid;
@@ -44,9 +43,9 @@ public class SondageFeedbackController {
         return sondageFeedbackService.getFeedbackById(id);
     }
 
-    @GetMapping("statistiques/{sondageId}")
-    public ResponseEntity<ApiResponse<SondageStatistiqueResponse>> getStatistiques(@PathVariable UUID sondageId) {
-        return sondageFeedbackService.getStatistiques(sondageId);
+    @GetMapping("maReponse/{sondageId}")
+    public ResponseEntity<ApiResponse<SondageFeedbackResponse>> getMaReponse(@PathVariable UUID sondageId) {
+        return sondageFeedbackService.getMaReponse(sondageId);
     }
 
     @PostMapping("add")
@@ -56,7 +55,7 @@ public class SondageFeedbackController {
 
     @PutMapping("update/{id}")
     public ResponseEntity<ApiResponse<SondageFeedbackResponse>> updateFeedback(@PathVariable UUID id,
-                                                                               @Valid @RequestBody SondageFeedbackRequest request) {
+                                                                               @RequestBody SondageFeedbackRequest request) {
         return sondageFeedbackService.updateFeedback(id, request);
     }
 
